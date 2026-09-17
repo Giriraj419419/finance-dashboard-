@@ -1,0 +1,94 @@
+# Finance Dashboard — cPanel FTPS deployment
+#
+# Triggers on pushes to `main` (or the default branch — rename to match your repo).
+# Manual runs are available via workflow_dispatch.
+#
+# Required GitHub Secrets (Settings → Secrets and variables → Actions):
+#   FTP_HOST      — cPanel FTP host, e.g. ftp.kktechsolutions.in
+#   FTP_USERNAME  — the FTP user (cPanel → FTP Accounts). Prefer a per-repo
+#                   FTP user with home dir = the site's document root.
+#   FTP_PASSWORD  — the FTP account password. Never hard-code.
+#   FTP_PORT      — optional, defaults to 21 (FTPS/explicit).
+#   FTP_REMOTE_DIR — optional, defaults to "./"; set to the site's docroot
+#                    (e.g. "/public_html/finance/" for a sub-folder deploy).
+#
+# The workflow uses FTPS (explicit TLS). `security: strict` in the action
+# refuses to deploy if the TLS handshake fails.
+#
+# `config.php`, `uploads/`, `videos/`, and dev-only files are excluded — the
+# production `config.php` on the server is never overwritten.
+
+name: Deploy to cPanel (FTPS)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: cpanel-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate PHP syntax
+        run: |
+          php_bin="$(command -v php || true)"
+          if [ -z "$php_bin" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq php-cli
+          fi
+          fail=0
+          while IFS= read -r -d '' f; do
+            out=$(php -l "$f" 2>&1) || true
+            if ! echo "$out" | grep -q "No syntax errors"; then
+              echo "FAIL: $f"
+              echo "$out"
+              fail=1
+            fi
+          done < <(find . -name "*.php" -type f -not -path './.git/*' -not -path './videos/*' -print0)
+          if [ "$fail" -ne 0 ]; then
+            echo "PHP syntax errors — aborting deploy."
+            exit 1
+          fi
+
+      - name: Deploy via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT || 21 }}
+          protocol: ftps
+          security: strict
+          server-dir: ${{ secrets.FTP_REMOTE_DIR || './' }}
+          local-dir: ./
+          # Files EXCLUDED from every deploy — never overwrite the server's
+          # config.php or user-uploaded files, and don't ship dev-only paths.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/node_modules/**
+            **/videos/**
+            **/docs/**
+            **/database/README.md
+            **/database/seed.sql
+            **/database/migration-*.sql
+            **/config.php
+            **/config.local.php
+            **/uploads/**
+            !**/uploads/.htaccess
+            !**/uploads/.gitkeep
+            **/*.log
+            **/*.bak
+            **/*.backup
+            **/*.sql.gz
+            **/*.tmp
+            **/*.swp
+            **/README.md
+            **/deploy.yml

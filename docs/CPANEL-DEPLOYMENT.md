@@ -84,9 +84,52 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL 365 DAY;
 
 Keep this longer than your compliance window requires.
 
-## GitHub Actions FTPS deployment (planned)
+## GitHub Actions FTPS deployment
 
-Not part of Phase 5. When you're ready, add `.github/workflows/deploy.yml` with an FTPS deployer action, gated on `main` pushes, secrets pulled from repo settings — details to be filled in Phase 6.
+`.github/workflows/deploy.yml` deploys the repo to the cPanel account via **FTPS (explicit TLS, strict cert check)** on every push to `main` or `master`, and on manual dispatch.
+
+**Required GitHub Secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Purpose |
+|---|---|
+| `FTP_HOST` | cPanel FTP host, e.g. `ftp.kktechsolutions.in` |
+| `FTP_USERNAME` | Dedicated FTP user for this repo. Best practice: create a per-repo FTP user in cPanel → FTP Accounts, with home directory pinned to the site's document root. |
+| `FTP_PASSWORD` | The FTP account's password. Never commit it. |
+| `FTP_PORT` | Optional; defaults to 21. |
+| `FTP_REMOTE_DIR` | Optional; defaults to `./`. Set to the site's docroot when deploying from a mono-repo (e.g. `/public_html/finance/`). |
+
+**Excluded from every deploy** — the workflow never uploads these:
+- `config.php` (server-side only — never overwritten)
+- `uploads/**` (user files) — the `.htaccess` guard and `.gitkeep` sentinels ARE uploaded
+- `videos/` (motion-graphics scratch)
+- `docs/`, `README.md`, `database/*.sql`, `.github/`, `.git*`, `node_modules/`, backup / log / tmp files
+
+**Before the first deploy**:
+1. Push this repo to GitHub.
+2. Add the five secrets above.
+3. Rename the branch to `main` (optional — workflow also triggers on `master`).
+4. Trigger a manual run via **Actions → Deploy to cPanel (FTPS) → Run workflow** — this smoke-tests the credentials before you rely on push-triggered deploys.
+
+**Post-deploy**: check the Actions run for green; browse the domain; if you see 500, follow the recovery playbook below.
+
+## Recovering from a "500 Internal Server Error" on every PHP page
+
+Symptom: `curl https://finance.kktechsolutions.in/login.php` returns 500.
+
+Diagnose in this order:
+
+1. **cPanel → Metrics → Errors** — read the top few lines of the error log for this domain. Almost always names the fatal.
+2. **Is `config.php` on the server?** Files can deploy without it (the workflow excludes it). If missing, `getDatabaseConnection()` throws on the first DB-touching page. Fix: create `config.php` on the server via cPanel File Manager.
+3. **Are the DB credentials correct?** cPanel prefixes both the DB name and DB user with your account name. Cross-check with cPanel → MySQL Databases.
+4. **Is PHP 8.4 selected?** cPanel → MultiPHP Manager → pick the domain → set to `PHP 8.4`. The app uses PHP 8.4 features (named arguments, readonly, etc.).
+5. **Is the `.htaccess` uploaded?** Root `.htaccess` sets `DirectoryIndex index.php` and denies dotfiles. Without it, the root returns 403.
+6. **Is the deploy user's home directory the docroot?** If the FTP user drops files into `/public_html/` but the site is served from `/public_html/finance/`, nothing lands where Apache looks. Fix in cPanel → FTP Accounts.
+
+Symptom: `curl https://finance.kktechsolutions.in/` returns 403.
+
+- Confirm `index.php` is at the docroot.
+- Confirm `.htaccess` is present at the docroot.
+- Confirm no `deny from all` was added by a prior tenant or a Cloudflare/security plugin.
 
 ## Rollback
 

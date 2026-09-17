@@ -21,13 +21,16 @@ DirectoryIndex index.php index.html
 RedirectMatch 403 ^.*/database/.*$
 RedirectMatch 403 ^.*/includes/.*$
 
-# --- Optional HTTPS redirect ---------------------------------------------
-# Uncomment on production once TLS is confirmed on cPanel:
-# <IfModule mod_rewrite.c>
-#     RewriteEngine On
-#     RewriteCond %{HTTPS} !=on
-#     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-# </IfModule>
+# --- HTTPS redirect ------------------------------------------------------
+# TLS is confirmed on the production domain (finance.kktechsolutions.in),
+# so upgrade all http requests to https at the edge.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Some hosts (Cloudflare, cPanel behind a proxy) pass X-Forwarded-Proto.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
 
 # --- Basic security headers ----------------------------------------------
 <IfModule mod_headers.c>
