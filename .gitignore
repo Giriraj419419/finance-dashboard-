@@ -1,0 +1,45 @@
+# Local configuration & secrets
+config.php
+.env
+.env.*
+*.secret
+*.pem
+*.key
+
+# Uploaded user files
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+error_log
+
+# Backups & temp
+*.bak
+*.backup
+*.tmp
+*.swp
+*~
+
+# IDE / editors
+.idea/
+.vscode/
+*.iml
+*.sublime-*
+
+# OS artifacts
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Forbidden by stack (guard against accidental introduction)
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+composer.lock
+vendor/
+dist/
+build/
+.vite/

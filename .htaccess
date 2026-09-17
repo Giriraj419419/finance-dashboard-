@@ -1,0 +1,38 @@
+# Finance Dashboard — Apache rules for cPanel
+# Keep rules simple and portable.
+
+# --- Directory listing off ------------------------------------------------
+Options -Indexes
+
+# --- Default document ----------------------------------------------------
+DirectoryIndex index.php index.html
+
+# --- Deny access to sensitive files --------------------------------------
+<FilesMatch "^(config\.php|config\.example\.php|database\.php|auth\.php|csrf\.php|functions\.php|mailer\.php|\.env.*|.*\.sql|.*\.md|composer\.(json|lock)|package(-lock)?\.json)$">
+    Require all denied
+</FilesMatch>
+
+# --- Deny access to dotfiles ---------------------------------------------
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# --- Deny access to private folders --------------------------------------
+RedirectMatch 403 ^.*/database/.*$
+RedirectMatch 403 ^.*/includes/.*$
+
+# --- Optional HTTPS redirect ---------------------------------------------
+# Uncomment on production once TLS is confirmed on cPanel:
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} !=on
+#     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+
+# --- Basic security headers ----------------------------------------------
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
