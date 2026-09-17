@@ -9,43 +9,45 @@ require_once __DIR__ . '/includes/topbar.php';
 <section class="page">
     <div class="breadcrumbs"><span><a href="dashboard.php">Home</a></span><span>Reports</span></div>
     <div class="page-header">
-        <div>
-            <h1 class="page-header__title">Reports</h1>
-            <p class="page-header__desc">Generate P&amp;L, cash flow, and category-level reports for any time range.</p>
-        </div>
-        <div class="page-header__actions">
-            <select class="btn btn--ghost btn--sm" aria-label="Range">
-                <option>This month</option>
-                <option>Last month</option>
-                <option>This quarter</option>
-                <option>Custom…</option>
-            </select>
-            <button class="btn btn--primary" type="button">Export PDF</button>
-        </div>
+        <div><h1 class="page-header__title">Reports</h1><p class="page-header__desc">Live summaries built from your ledger — scoped to your account.</p></div>
     </div>
 
     <div class="dash-grid--three">
-        <section class="card">
-            <div class="card__header"><h2 class="card__title">Profit &amp; Loss</h2></div>
+        <a class="card report-card" href="report-income-expense.php">
             <div class="card__body">
-                <p class="text-muted">Summarised income and expense for the selected range.</p>
-                <button class="btn btn--ghost mt-4" type="button">Generate report</button>
+                <h2 class="card__title">Income &amp; Expense</h2>
+                <p class="text-muted">Totals, net balance, and category breakdown for a date range.</p>
+                <div class="btn btn--ghost mt-2">Open →</div>
             </div>
-        </section>
-        <section class="card">
-            <div class="card__header"><h2 class="card__title">Cash flow</h2></div>
+        </a>
+        <a class="card report-card" href="report-transactions.php">
             <div class="card__body">
-                <p class="text-muted">Inflow, outflow, and net movement across accounts.</p>
-                <button class="btn btn--ghost mt-4" type="button">Generate report</button>
+                <h2 class="card__title">Transactions</h2>
+                <p class="text-muted">Filter, search, and total by type / category / status.</p>
+                <div class="btn btn--ghost mt-2">Open →</div>
             </div>
-        </section>
-        <section class="card">
-            <div class="card__header"><h2 class="card__title">Category breakdown</h2></div>
+        </a>
+        <a class="card report-card" href="report-budgets.php">
             <div class="card__body">
-                <p class="text-muted">Where every dollar goes, ranked by category.</p>
-                <button class="btn btn--ghost mt-4" type="button">Generate report</button>
+                <h2 class="card__title">Budget Performance</h2>
+                <p class="text-muted">Planned vs actual, utilisation, over-budget flags.</p>
+                <div class="btn btn--ghost mt-2">Open →</div>
             </div>
-        </section>
+        </a>
+        <a class="card report-card" href="report-goals.php">
+            <div class="card__body">
+                <h2 class="card__title">Goal Progress</h2>
+                <p class="text-muted">Every goal's target, saved, remaining, and progress.</p>
+                <div class="btn btn--ghost mt-2">Open →</div>
+            </div>
+        </a>
+        <a class="card report-card" href="report-payments.php">
+            <div class="card__body">
+                <h2 class="card__title">Payment Summary</h2>
+                <p class="text-muted">Paid vs pending vs overdue, with a status breakdown.</p>
+                <div class="btn btn--ghost mt-2">Open →</div>
+            </div>
+        </a>
     </div>
 </section>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

@@ -67,17 +67,40 @@ try {
     );
 
     $reminders = fetchAll(
-        "SELECT id, title, reminder_date
+        "SELECT id, title, reminder_date, priority,
+                (reminder_date < NOW()) AS is_overdue
          FROM reminders
-         WHERE user_id = :uid AND status = 'pending' AND reminder_date >= NOW()
-         ORDER BY reminder_date ASC
+         WHERE user_id = :uid AND status = 'pending'
+         ORDER BY is_overdue DESC, reminder_date ASC
          LIMIT 5",
+        [':uid' => $uid]
+    );
+
+    // PO status summary (own + scope-widened for admin/manager elsewhere).
+    $po_summary = fetchOne(
+        "SELECT
+            COUNT(*) AS total,
+            SUM(status IN ('draft','submitted','open')) AS in_progress,
+            SUM(status = 'approved')                    AS approved,
+            SUM(status IN ('ordered','received','closed')) AS completed
+         FROM purchase_orders WHERE user_id = :uid",
+        [':uid' => $uid]
+    ) ?? ['total' => 0, 'in_progress' => 0, 'approved' => 0, 'completed' => 0];
+
+    // Recent activity from audit_logs (user's own row only).
+    $recent_activity = fetchAll(
+        'SELECT action, entity_type, entity_id, created_at
+         FROM audit_logs
+         WHERE user_id = :uid
+         ORDER BY created_at DESC
+         LIMIT 8',
         [':uid' => $uid]
     );
 } catch (Throwable $e) {
     error_log('[dashboard] ' . $e->getMessage());
     $totals = ['total_income' => 0, 'total_expense' => 0];
-    $recent = $budgets = $goals = $upcoming_payments = $reminders = [];
+    $recent = $budgets = $goals = $upcoming_payments = $reminders = $recent_activity = [];
+    $po_summary = ['total' => 0, 'in_progress' => 0, 'approved' => 0, 'completed' => 0];
     flash('danger', 'Could not load your dashboard right now. Please refresh.');
 }
 
@@ -259,6 +282,43 @@ require_once __DIR__ . '/includes/topbar.php';
         </section>
     </div>
 
+    <!-- PO summary + Recent activity -->
+    <div class="dash-grid mt-6">
+        <section class="card">
+            <div class="card__header"><h2 class="card__title">Purchase orders</h2><a class="btn btn--ghost btn--sm" href="purchase-orders.php">Open</a></div>
+            <div class="card__body">
+                <?php if ((int) $po_summary['total'] === 0): ?>
+                    <div class="empty-state">
+                        <div class="empty-state__title">No POs yet</div>
+                        <div class="empty-state__desc">Raise a purchase order to start tracking supplier commitments.</div>
+                        <a class="btn btn--primary" href="po-new.php">New PO</a>
+                    </div>
+                <?php else: ?>
+                    <div class="item-row"><div class="item-row__grow"><div class="item-row__title">In progress</div><div class="item-row__meta">Draft, submitted, open</div></div><div class="text-right"><?= (int) $po_summary['in_progress'] ?></div></div>
+                    <div class="item-row"><div class="item-row__grow"><div class="item-row__title">Approved</div></div><div class="text-right"><?= (int) $po_summary['approved'] ?></div></div>
+                    <div class="item-row"><div class="item-row__grow"><div class="item-row__title">Ordered, received or closed</div></div><div class="text-right"><?= (int) $po_summary['completed'] ?></div></div>
+                    <div class="item-row"><div class="item-row__grow"><div class="item-row__title">Total</div></div><div class="text-right"><strong><?= (int) $po_summary['total'] ?></strong></div></div>
+                <?php endif; ?>
+            </div>
+        </section>
+        <section class="card">
+            <div class="card__header"><h2 class="card__title">Recent activity</h2></div>
+            <div class="card__body">
+                <?php if (empty($recent_activity)): ?>
+                    <div class="text-muted">No activity yet.</div>
+                <?php else: foreach ($recent_activity as $a): ?>
+                    <div class="item-row">
+                        <div class="item-row__grow">
+                            <div class="item-row__title"><?= e(ucwords(str_replace('_', ' ', (string) $a['action']))) ?></div>
+                            <div class="item-row__meta"><?= e(str_replace('_', ' ', (string) $a['entity_type'])) ?><?= $a['entity_id'] ? ' #' . (int) $a['entity_id'] : '' ?></div>
+                        </div>
+                        <div class="text-soft item-row__meta"><?= e(date('M j, g:i A', strtotime((string) $a['created_at']))) ?></div>
+                    </div>
+                <?php endforeach; endif; ?>
+            </div>
+        </section>
+    </div>
+
     <!-- Reminders -->
     <section class="card mt-6">
         <div class="card__header"><h2 class="card__title">Reminders</h2><a href="reminders.php" class="btn btn--ghost btn--sm">All reminders</a></div>
@@ -272,16 +332,22 @@ require_once __DIR__ . '/includes/topbar.php';
                 </div>
             <?php else: foreach ($reminders as $r):
                 $when = strtotime((string) $r['reminder_date']);
-                $days = (int) floor(($when - time()) / 86400);
-                $when_label = $days <= 0 ? 'Today' : ($days === 1 ? 'Tomorrow' : ('In ' . $days . ' days'));
-                $variant = $days <= 1 ? 'warning' : ($days <= 3 ? 'info' : 'neutral');
+                $overdue = (int) ($r['is_overdue'] ?? 0) === 1;
+                if ($overdue) {
+                    $when_label = 'Overdue';
+                    $variant = 'danger';
+                } else {
+                    $days = (int) floor(($when - time()) / 86400);
+                    $when_label = $days <= 0 ? 'Today' : ($days === 1 ? 'Tomorrow' : ('In ' . $days . ' days'));
+                    $variant = $days <= 1 ? 'warning' : ($days <= 3 ? 'info' : 'neutral');
+                }
             ?>
                 <div class="item-row">
                     <div class="item-row__grow">
                         <div class="item-row__title"><?= e($r['title']) ?></div>
-                        <div class="item-row__meta"><?= e($when_label) ?></div>
+                        <div class="item-row__meta"><?= e($when_label) ?> · Priority: <?= e(ucfirst((string) $r['priority'])) ?></div>
                     </div>
-                    <span class="badge badge--<?= e($variant) ?>">Due soon</span>
+                    <span class="badge badge--<?= e($variant) ?>"><?= $overdue ? 'Overdue' : 'Due soon' ?></span>
                 </div>
             <?php endforeach; endif; ?>
         </div>

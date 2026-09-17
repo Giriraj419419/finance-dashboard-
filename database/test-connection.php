@@ -26,9 +26,9 @@ require_once __DIR__ . '/../functions.php';
 require_once __DIR__ . '/../database.php';
 
 $required_tables = [
-    'users', 'transactions', 'budgets', 'goals', 'payments',
-    'purchase_orders', 'purchase_order_items', 'reminders', 'reports',
-    'password_reset_tokens', 'audit_logs',
+    'users', 'transactions', 'budgets', 'goals', 'goal_contributions',
+    'payments', 'purchase_orders', 'purchase_order_items', 'reminders',
+    'reports', 'password_reset_tokens', 'login_attempts', 'audit_logs',
 ];
 
 $results = [];

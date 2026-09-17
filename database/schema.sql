@@ -148,11 +148,15 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     id             INT UNSIGNED    NOT NULL AUTO_INCREMENT,
     user_id        INT UNSIGNED    NOT NULL,
     supplier_name  VARCHAR(200)    NOT NULL,
+    supplier_email VARCHAR(190)    NULL,
+    supplier_phone VARCHAR(40)     NULL,
     order_number   VARCHAR(60)     NOT NULL,
     order_date     DATE            NOT NULL,
     expected_date  DATE            NULL,
+    subtotal       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
+    tax_amount     DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
     total_amount   DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-    status         ENUM('draft','open','approved','received','closed','cancelled')
+    status         ENUM('draft','submitted','open','approved','ordered','received','closed','cancelled')
                                    NOT NULL DEFAULT 'draft',
     notes          TEXT            NULL,
     created_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -174,8 +178,10 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
     id                  INT UNSIGNED   NOT NULL AUTO_INCREMENT,
     purchase_order_id   INT UNSIGNED   NOT NULL,
     item_name           VARCHAR(200)   NOT NULL,
+    description         VARCHAR(255)   NULL,
     quantity            DECIMAL(12,2)  NOT NULL DEFAULT 1.00,
     unit_price          DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    tax_rate            DECIMAL(5,2)   NOT NULL DEFAULT 0.00,
     total_price         DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     created_at          DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -195,18 +201,22 @@ CREATE TABLE IF NOT EXISTS reminders (
     user_id               INT UNSIGNED   NOT NULL,
     title                 VARCHAR(200)   NOT NULL,
     description           TEXT           NULL,
+    priority              ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
     reminder_date         DATETIME       NOT NULL,
     recurrence_type       ENUM('none','daily','weekly','monthly','yearly')
                                          NOT NULL DEFAULT 'none',
     recurrence_end_date   DATE           NULL,
     status                ENUM('pending','completed','snoozed','cancelled')
                                          NOT NULL DEFAULT 'pending',
+    related_module        VARCHAR(60)    NULL,
+    related_id            BIGINT UNSIGNED NULL,
     created_at            DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at            DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP
                                          ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_reminders_user_date (user_id, reminder_date),
     KEY idx_reminders_status    (status),
+    KEY idx_reminders_priority  (priority),
     CONSTRAINT fk_reminders_user
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE RESTRICT ON UPDATE CASCADE
