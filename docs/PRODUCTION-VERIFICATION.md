@@ -121,7 +121,8 @@ Full matrix in [TESTING-CHECKLIST.md](TESTING-CHECKLIST.md).
 
 ## GitHub Actions deployment results
 
-- **NOT DEPLOYED YET.** The repo has no `origin` remote. `.github/workflows/deploy.yml` is now in place and will run on any push to `main` / `master` once the repo is connected to GitHub.
+- **Repository pushed to GitHub** at https://github.com/Giriraj419419/finance-dashboard- (branch `master`, tracking `origin/master` at commit `2957b88`).
+- The push will have triggered `.github/workflows/deploy.yml`. That first run **is expected to fail on the "Deploy via FTPS" step** until the five FTPS secrets are added, which is the correct behaviour — the workflow refuses to reach cPanel without valid credentials rather than deploying anonymously.
 - The workflow uses **FTPS** (explicit TLS, `security: strict`) — never plain FTP.
 - It **excludes** `config.php`, `uploads/`, `videos/`, `docs/`, `database/*.sql`, `.github/`, `.git*`, and dev artifacts. The server-side `config.php` is never touched.
 - Required GitHub Secrets:
