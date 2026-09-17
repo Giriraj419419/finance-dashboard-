@@ -787,6 +787,8 @@ p  { margin: 0 0 var(--sp-3) 0; color: var(--color-text-muted); }
     .filters__actions { grid-column: 1 / -1; }
 }
 .inline-form { display: inline-block; margin: 0; padding: 0; }
+.col-progress { min-width: 160px; }
+.col-min-160 { min-width: 160px; }
 .pagination {
     display: flex;
     justify-content: space-between;

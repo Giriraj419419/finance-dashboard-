@@ -31,10 +31,19 @@ try {
     );
 
     $budgets = fetchAll(
-        "SELECT id, name, budget_amount, spent_amount
-         FROM budgets
-         WHERE user_id = :uid AND status = 'active'
-         ORDER BY updated_at DESC
+        "SELECT b.id, b.name, b.budget_amount,
+                COALESCE((
+                    SELECT SUM(t.amount) FROM transactions t
+                    WHERE t.user_id = b.user_id
+                      AND t.type = 'expense'
+                      AND t.status = 'completed'
+                      AND t.category = b.category
+                      AND t.transaction_date >= b.start_date
+                      AND (b.end_date IS NULL OR t.transaction_date <= b.end_date)
+                ), 0) AS spent_amount
+         FROM budgets b
+         WHERE b.user_id = :uid AND b.status = 'active'
+         ORDER BY b.updated_at DESC
          LIMIT 4",
         [':uid' => $uid]
     );

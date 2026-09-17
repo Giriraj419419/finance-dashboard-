@@ -4,6 +4,7 @@ require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/audit.php';
+require_once __DIR__ . '/login-throttle.php';
 
 start_session_once();
 if (isAuthenticated()) {
@@ -24,8 +25,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Combined with usleep() below, this closes the user-enumeration timing side channel.
     $DUMMY_HASH = '$2y$12$CzSUZNbRV1LKpipK1zi0v./88T7umivl9LNXlKng8V4km431mS0bS';
 
+    $ip = client_ip();
+
     if ($old_email === '' || $password === '') {
         $errors['_general'] = 'Invalid email or password.';
+    } elseif (login_is_blocked($old_email, $ip)) {
+        // Do NOT reveal whether the email exists.
+        log_audit('login_locked_out', 'user', null, ['email' => $old_email]);
+        $errors['_general'] = 'Too many failed attempts. Try again later.';
     } else {
         try {
             $user = fetchOne(
@@ -36,14 +43,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $verified = $user && verify_password($password, $hash);
 
             if (!$verified) {
-                // Small timing brake against brute force. Not a full lockout — see report.
+                // Small timing brake + persistent failure record for throttle.
                 usleep(400_000);
+                login_record_attempt($old_email, $ip, false);
                 log_audit('login_failed', 'user', $user['id'] ?? null, ['email' => $old_email]);
                 $errors['_general'] = 'Invalid email or password.';
             } elseif (($user['status'] ?? 'active') !== 'active') {
+                login_record_attempt($old_email, $ip, false);
                 log_audit('login_blocked', 'user', $user['id'], ['status' => $user['status']]);
                 $errors['_general'] = 'Your account is not active. Contact an administrator.';
             } else {
+                login_record_attempt($old_email, $ip, true);
+                login_clear_recent_failures($old_email);
                 loginUser($user);
                 try {
                     executeQuery(

@@ -50,5 +50,10 @@ return [
 
     'security' => [
         'bcrypt_cost' => 12,
+        'login_throttle' => [
+            'threshold'        => 5,      // failed attempts before lockout
+            'window_seconds'   => 900,    // 15 min window for counting failures
+            'lockout_seconds'  => 900,    // 15 min lockout duration
+        ],
     ],
 ];
