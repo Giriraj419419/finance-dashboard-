@@ -11,15 +11,16 @@ require_once __DIR__ . '/functions.php';
 
 function send_mail(string $to, string $subject, string $htmlBody, string $textBody = ''): bool
 {
-    $smtp = app_config('smtp');
-    if (empty($smtp['host'])) {
+    $mail = app_config('mail');
+    if (empty($mail['host'])) {
         return false;
     }
 
-    // Phase 1 stub: log intent so developers can see the pipeline is reachable.
+    // Phase 2 stub: log intent so developers can see the pipeline is reachable.
+    // Actual SMTP dialogue over fsockopen lands in the auth/email phase.
     if (app_config('app')['debug'] ?? false) {
         error_log(sprintf(
-            '[mailer:stub] to=%s subject=%s (SMTP send not implemented in Phase 1)',
+            '[mailer:stub] to=%s subject=%s (SMTP send not implemented yet)',
             $to,
             $subject
         ));

@@ -14,9 +14,22 @@ A professional, plain-PHP finance management dashboard for tracking transactions
 
 No React, Vue, Angular, Vite, Webpack, npm, Node, Tailwind, Bootstrap, jQuery, Composer packages, or AWS.
 
+## Current status: Phase 2
+
+The MySQL schema and PHP PDO backend foundation are in place. Auth, CRUD, and email are still ahead.
+
+**What's new since Phase 1:**
+- `database/schema.sql` — 11 InnoDB tables (users, transactions, budgets, goals, payments, purchase_orders, purchase_order_items, reminders, reports, password_reset_tokens, audit_logs) with foreign keys, indexes, and `DECIMAL(12,2)` money columns.
+- `database/seed.sql` — idempotent development sample data with real bcrypt hashes.
+- `database/README.md` — cPanel-first setup walkthrough.
+- `database/test-connection.php` — CLI self-test (config, connect, version, charset, tables, error surface). Blocks web SAPI.
+- `database.php` — memoised `getDatabaseConnection()` plus `executeQuery`, `fetchOne`, `fetchAll`, `insertRecord`, `updateRecord` helpers; `install_db_error_handler()` for a safe production surface.
+- `config.php` / `config.example.php` restructured with `database` + `mail` + `security` sections.
+- `.htaccess` extended to deny `.bak`, `.backup`, `.log`, `.ini`, `.conf` files.
+
 ## Phase 1 status
 
-This commit contains the **foundation and UI shell only**:
+Phase 1 delivered the **foundation and UI shell only**:
 
 - Complete folder structure
 - Layout shell (sidebar, topbar, main container, footer, flash area, mobile menu)

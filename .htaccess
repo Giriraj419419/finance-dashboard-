@@ -8,7 +8,7 @@ Options -Indexes
 DirectoryIndex index.php index.html
 
 # --- Deny access to sensitive files --------------------------------------
-<FilesMatch "^(config\.php|config\.example\.php|database\.php|auth\.php|csrf\.php|functions\.php|mailer\.php|\.env.*|.*\.sql|.*\.md|composer\.(json|lock)|package(-lock)?\.json)$">
+<FilesMatch "^(config\.php|config\.example\.php|database\.php|auth\.php|csrf\.php|functions\.php|mailer\.php|\.env.*|.*\.sql|.*\.md|composer\.(json|lock)|package(-lock)?\.json|.*\.(bak|backup|log|ini|conf))$">
     Require all denied
 </FilesMatch>
 

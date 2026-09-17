@@ -43,3 +43,6 @@ vendor/
 dist/
 build/
 .vite/
+
+# Motion-graphics scratch (not part of the finance-dashboard PHP project)
+videos/
