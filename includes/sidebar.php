@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions.php';
 require_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../csrf.php';
 
 $active = current_page();
 
@@ -68,14 +69,17 @@ $render_link = function (array $item) use ($active) {
         <ul class="nav-list">
             <?php foreach ($nav_account as $item) { echo $render_link($item); } ?>
             <li>
-                <a class="nav-link" href="<?= e(base_url('/logout.php')) ?>">
-                    <span class="nav-link__icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
-                        </svg>
-                    </span>
-                    <span>Sign out</span>
-                </a>
+                <form method="POST" action="<?= e(base_url('/logout.php')) ?>" class="nav-form">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="nav-link nav-link--button">
+                        <span class="nav-link__icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
+                            </svg>
+                        </span>
+                        <span>Sign out</span>
+                    </button>
+                </form>
             </li>
         </ul>
     </nav>

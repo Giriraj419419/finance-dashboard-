@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/auth-check.php';
+requireRole('admin', 'manager');
 $page_title = 'Purchase Orders';
 
 require_once __DIR__ . '/includes/header.php';

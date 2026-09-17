@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth-check.php';
 require_once __DIR__ . '/csrf.php';
+requireRole('admin');
 $page_title = 'Settings';
 
 require_once __DIR__ . '/includes/header.php';

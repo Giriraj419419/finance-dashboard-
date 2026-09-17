@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions.php';
 require_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../csrf.php';
 
 if (!isset($page_title)) {
     $page_title = 'Dashboard';
@@ -47,7 +48,10 @@ $initials = strtoupper(mb_substr((string) ($user['name'] ?? 'U'), 0, 1));
                 <div class="user-menu__panel" data-user-menu-panel role="menu">
                     <a href="<?= e(base_url('/profile.php')) ?>" role="menuitem">Profile</a>
                     <a href="<?= e(base_url('/settings.php')) ?>" role="menuitem">Settings</a>
-                    <a href="<?= e(base_url('/logout.php')) ?>" role="menuitem">Sign out</a>
+                    <form method="POST" action="<?= e(base_url('/logout.php')) ?>" class="user-menu__logout">
+                        <?= csrf_field() ?>
+                        <button type="submit" role="menuitem">Sign out</button>
+                    </form>
                 </div>
             </div>
         </div>
