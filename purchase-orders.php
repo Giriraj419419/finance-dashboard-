@@ -68,7 +68,10 @@ require_once __DIR__ . '/includes/topbar.php';
     <div class="breadcrumbs"><span><a href="dashboard.php">Home</a></span><span>Purchase Orders</span></div>
     <div class="page-header">
         <div><h1 class="page-header__title">Purchase orders</h1><p class="page-header__desc">Raise, approve, and track vendor purchase orders.</p></div>
-        <div class="page-header__actions"><a class="btn btn--primary" href="po-new.php">New PO</a></div>
+        <div class="page-header__actions">
+            <a class="btn btn--ghost" href="export-csv.php?report=purchase_orders">Export CSV</a>
+            <a class="btn btn--primary" href="po-new.php">New PO</a>
+        </div>
     </div>
 
     <section class="card">

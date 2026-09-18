@@ -56,4 +56,13 @@ return [
             'lockout_seconds'  => 900,    // 15 min lockout duration
         ],
     ],
+
+    // Web Push (VAPID). Generate keys with `php cron/generate-vapid-keys.php`.
+    // vapid_public_key is safe to send to browsers.
+    // vapid_private_key_path MUST point to a PEM file outside git (or gitignored).
+    'push' => [
+        'vapid_subject'          => 'mailto:accounts@kktechsolutions.in',
+        'vapid_public_key'       => '',
+        'vapid_private_key_path' => '',
+    ],
 ];

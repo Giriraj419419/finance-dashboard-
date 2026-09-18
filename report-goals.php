@@ -30,7 +30,10 @@ require_once __DIR__ . '/includes/topbar.php';
 ?>
 <section class="page">
     <div class="breadcrumbs"><span><a href="dashboard.php">Home</a></span><span><a href="reports.php">Reports</a></span><span>Goal progress</span></div>
-    <div class="page-header"><div><h1 class="page-header__title">Goal progress</h1><p class="page-header__desc">Where every goal stands.</p></div></div>
+    <div class="page-header">
+        <div><h1 class="page-header__title">Goal progress</h1><p class="page-header__desc">Where every goal stands.</p></div>
+        <div class="page-header__actions"><a class="btn btn--ghost" href="export-csv.php?report=goals">Export CSV</a></div>
+    </div>
 
     <div class="summary-grid mt-2">
         <div class="summary"><div class="summary__head"><span>Total target</span></div><div class="summary__value"><?= e(money($total_target)) ?></div></div>

@@ -30,6 +30,7 @@ $required_tables = [
     'payments', 'purchase_orders', 'purchase_order_items', 'reminders',
     'reports', 'password_reset_tokens', 'login_attempts', 'audit_logs',
     'reminder_notifications', 'system_health',
+    'push_subscriptions', 'user_notification_preferences',
 ];
 
 $results = [];

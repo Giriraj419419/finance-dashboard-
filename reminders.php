@@ -59,7 +59,10 @@ require_once __DIR__ . '/includes/topbar.php';
     <div class="breadcrumbs"><span><a href="dashboard.php">Home</a></span><span>Reminders</span></div>
     <div class="page-header">
         <div><h1 class="page-header__title">Reminders</h1><p class="page-header__desc">Stay ahead of tax filings, renewals, and reviews.</p></div>
-        <div class="page-header__actions"><a class="btn btn--primary" href="reminder-new.php">New reminder</a></div>
+        <div class="page-header__actions">
+            <a class="btn btn--ghost" href="export-csv.php?report=reminders">Export CSV</a>
+            <a class="btn btn--primary" href="reminder-new.php">New reminder</a>
+        </div>
     </div>
 
     <div class="tab-bar">

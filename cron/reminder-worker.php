@@ -44,6 +44,7 @@ $ROOT = dirname(__DIR__);
 require_once $ROOT . '/functions.php';
 require_once $ROOT . '/database.php';
 require_once $ROOT . '/mailer.php';
+require_once $ROOT . '/push-webpush.php';
 
 $app = app_config('app');
 if (!empty($app['timezone'])) {
@@ -322,7 +323,7 @@ function deliver(array $r, DateTimeImmutable $occ, string $app_name, string $bas
     }
     $processed++;
 
-    $ok = send_reminder_email($r, $occ, $app_name, $base_url, $err);
+    $ok = send_reminder_notification($r, $occ, $app_name, $base_url, $err);
     finalise_notification($claim_id, $ok, $err ?? null);
     $ok ? $sent++ : $failed++;
 }
@@ -351,7 +352,7 @@ function deliver_retry(array $rn, string $app_name, string $base_url, int &$sent
         'user_name'     => $rn['user_name'],
     ];
     $occ = new DateTimeImmutable((string) $rn['scheduled_for']);
-    $ok = send_reminder_email($r, $occ, $app_name, $base_url, $err);
+    $ok = send_reminder_notification($r, $occ, $app_name, $base_url, $err);
     finalise_notification((int) $rn['id'], $ok, $err ?? null);
     $ok ? $sent++ : $failed++;
 }
@@ -379,6 +380,62 @@ function finalise_notification(int $rn_id, bool $ok, ?string $error): void
     } catch (Throwable $e) {
         wlog('warn', 'finalise failed', ['id' => $rn_id, 'error' => $e->getMessage()]);
     }
+}
+
+/**
+ * Attempts push first (if the user has active subscriptions AND push_enabled),
+ * then falls back to email (if email_enabled). Returns true if AT LEAST ONE
+ * channel accepted the notification.
+ */
+function send_reminder_notification(array $r, DateTimeImmutable $occ, string $app_name, string $base_url, ?string &$err = null): bool
+{
+    $uid = (int) ($r['user_id'] ?? 0);
+    $prefs = fetchOne('SELECT email_enabled, push_enabled FROM user_notification_preferences WHERE user_id = :u LIMIT 1', [':u' => $uid])
+        ?? ['email_enabled' => 1, 'push_enabled' => 1];
+
+    $anySuccess = false;
+    $errors = [];
+
+    // ---- Push first --------------------------------------------------
+    if ((int) $prefs['push_enabled'] === 1) {
+        $subs = fetchAll('SELECT id, endpoint, p256dh_key, auth_key FROM push_subscriptions WHERE user_id = :u AND is_active = 1', [':u' => $uid]);
+        if ($subs) {
+            $due_fmt = $occ->format('j M Y, g:i A');
+            $payload = json_encode([
+                'title' => 'Reminder: ' . (string) ($r['title'] ?? ''),
+                'body'  => 'Due ' . $due_fmt . '  ·  Priority: ' . ucfirst((string) ($r['priority'] ?? 'medium')),
+                'url'   => rtrim($base_url, '/') . '/reminders.php',
+                'tag'   => 'reminder-' . (int) ($r['id'] ?? 0) . '-' . $occ->format('YmdHis'),
+            ], JSON_UNESCAPED_SLASHES);
+            foreach ($subs as $s) {
+                [$code, $_resp, $perr] = web_push_send($s, $payload);
+                if ($code === 201 || $code === 202) {
+                    $anySuccess = true;
+                    executeQuery('UPDATE push_subscriptions SET last_used_at = NOW(), last_error = NULL WHERE id = :id', [':id' => (int) $s['id']]);
+                } elseif ($code === 404 || $code === 410) {
+                    executeQuery("UPDATE push_subscriptions SET is_active = 0, last_error = 'gone' WHERE id = :id", [':id' => (int) $s['id']]);
+                } else {
+                    $safe = mb_substr((string) $perr ?: ('http ' . $code), 0, 255);
+                    executeQuery('UPDATE push_subscriptions SET last_error = :e WHERE id = :id', [':e' => $safe, ':id' => (int) $s['id']]);
+                    $errors[] = 'push:' . $code;
+                }
+            }
+        }
+    }
+
+    // ---- Email (also runs — treats push and email as complementary, not either/or) --
+    if ((int) $prefs['email_enabled'] === 1) {
+        if (send_reminder_email($r, $occ, $app_name, $base_url, $mail_err)) {
+            $anySuccess = true;
+        } else {
+            $errors[] = 'mail:' . ($mail_err ?? 'unknown');
+        }
+    }
+
+    if (!$anySuccess) {
+        $err = $errors === [] ? 'no channels enabled' : implode('; ', $errors);
+    }
+    return $anySuccess;
 }
 
 function send_reminder_email(array $r, DateTimeImmutable $occ, string $app_name, string $base_url, ?string &$err = null): bool

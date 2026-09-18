@@ -173,6 +173,20 @@ require_once __DIR__ . '/includes/topbar.php';
         </section>
 
         <section class="card">
+            <div class="card__header"><h2 class="card__title">Notifications</h2></div>
+            <div class="card__body">
+                <p class="text-muted">Receive reminder notifications on this browser even when the dashboard tab is closed.</p>
+                <div class="push-status" data-push-status>Checking browser support…</div>
+                <div class="flex gap-2 mt-2">
+                    <button type="button" class="btn btn--primary" data-push-enable>Enable notifications</button>
+                    <button type="button" class="btn btn--ghost is-hidden" data-push-disable>Disable</button>
+                    <button type="button" class="btn btn--ghost is-hidden" data-push-test>Send test</button>
+                </div>
+                <p class="text-soft mt-2 text-xs">Email reminders still send from the server-side cron regardless of this toggle.</p>
+            </div>
+        </section>
+
+        <section class="card">
             <div class="card__header"><h2 class="card__title">Change password</h2></div>
             <div class="card__body">
                 <?php if (!empty($password_errors['_general'])): ?>
@@ -205,4 +219,15 @@ require_once __DIR__ . '/includes/topbar.php';
         </section>
     </div>
 </section>
+<?php
+$push_cfg = app_config('push');
+$vapid_pub = (string) ($push_cfg['vapid_public_key'] ?? '');
+?>
+<script>
+window.__push = {
+    vapidPublicKey: <?= json_encode($vapid_pub) ?>,
+    csrfToken:      <?= json_encode(csrf_token()) ?>
+};
+</script>
+<script src="<?= e(base_url('/ui/js/push.js')) ?>"></script>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

@@ -859,6 +859,24 @@ h3 { font-size: var(--fs-lg); }
 .summary__value--lg { font-size: var(--fs-lg); }
 
 .text-danger { color: var(--color-danger); }
+.text-xs     { font-size: var(--fs-xs); }
+
+/* Web Push controls (profile page) */
+.is-hidden { display: none !important; }
+.push-status {
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    font-size: var(--fs-sm);
+    color: var(--color-text-body);
+}
+.push-status.is-enabled     { border-left: 3px solid var(--color-success); }
+.push-status.is-disabled    { border-left: 3px solid var(--color-text-soft); }
+.push-status.is-blocked     { border-left: 3px solid var(--color-danger); color: var(--color-danger); }
+.push-status.is-error       { border-left: 3px solid var(--color-danger); color: var(--color-danger); }
+.push-status.is-warning     { border-left: 3px solid var(--color-warning); }
+.push-status.is-unsupported { border-left: 3px solid var(--color-text-soft); }
 .pagination {
     display: flex;
     justify-content: space-between;

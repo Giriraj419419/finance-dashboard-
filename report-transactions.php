@@ -66,6 +66,13 @@ require_once __DIR__ . '/includes/topbar.php';
     <div class="breadcrumbs"><span><a href="dashboard.php">Home</a></span><span><a href="reports.php">Reports</a></span><span>Transactions</span></div>
     <div class="page-header">
         <div><h1 class="page-header__title">Transactions report</h1><p class="page-header__desc">Filter, search, and total across your ledger.</p></div>
+        <div class="page-header__actions">
+            <?php
+                $csvq = array_filter(['type'=>$type,'status'=>$status,'category'=>$category,'from'=>$from,'to'=>$to], static fn($v) => $v !== '');
+                $csvq['report'] = 'transactions';
+            ?>
+            <a class="btn btn--ghost" href="export-csv.php?<?= e(http_build_query($csvq)) ?>">Export CSV</a>
+        </div>
     </div>
 
     <section class="card"><div class="card__body">
