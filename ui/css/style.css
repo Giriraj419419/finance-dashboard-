@@ -140,6 +140,18 @@ h3 { font-size: var(--fs-lg); }
     min-height: 100vh;
 }
 
+/* Sidebar mobile-drawer backdrop — MUST be `position: fixed` at all breakpoints,
+   otherwise it becomes a normal grid child on desktop and eats the first
+   column, pushing the sidebar into the main-content area. */
+.sidebar__backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    z-index: 25;
+}
+.sidebar__backdrop.is-open { display: block; }
+
 /* --- Sidebar --- */
 .sidebar {
     background: var(--color-surface);
@@ -792,15 +804,6 @@ h3 { font-size: var(--fs-lg); }
         box-shadow: var(--shadow-lg);
     }
     .sidebar.is-open { transform: translateX(0); }
-
-    .sidebar__backdrop {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.35);
-        z-index: 25;
-    }
-    .sidebar__backdrop.is-open { display: block; }
 
     .page { padding: var(--sp-4); }
     .auth { grid-template-columns: 1fr; }
