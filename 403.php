@@ -13,7 +13,7 @@ $app_name = app_config('app')['name'] ?? 'Finance Dashboard';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($page_title . ' — ' . $app_name) ?></title>
-    <link rel="stylesheet" href="<?= e(base_url('/assets/css/style.css')) ?>">
+    <link rel="stylesheet" href="<?= e(base_url('/ui/css/style.css')) ?>">
 </head>
 <body>
 <div class="auth">
