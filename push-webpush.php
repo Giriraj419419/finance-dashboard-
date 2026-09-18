@@ -192,13 +192,20 @@ function _wp_b64u_decode(string $s): string
     return $out === false ? '' : $out;
 }
 
-/** HKDF-Expand(PRK, info, L) with SHA-256 (RFC 5869). L ≤ 32 for our uses. */
+/**
+ * HKDF-Expand(PRK, info, L) with SHA-256 (RFC 5869).
+ *
+ * DO NOT use PHP's built-in hash_hkdf() here — it always performs the full
+ * Extract+Expand cycle (treats its "key" arg as IKM and does an Extract
+ * with the given salt before Expand). We already have a PRK from an
+ * earlier Extract, so we need Expand ONLY. Doing another Extract on top
+ * produces a different key than the browser derives, and the ciphertext
+ * decrypts to garbage on the client → notification silently dropped.
+ *
+ * L ≤ 32 for our use, so N=1 iteration is enough.
+ */
 function _wp_hkdf_expand(string $prk, string $info, int $length): string
 {
-    if (function_exists('hash_hkdf')) {
-        return hash_hkdf('sha256', $prk, $length, $info, '');
-    }
-    // Fallback (unlikely path on PHP 8.4)
     $t = '';
     $okm = '';
     $counter = 1;
