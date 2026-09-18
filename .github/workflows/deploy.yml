@@ -103,9 +103,11 @@ jobs:
             **/database/migration-*.sql
             **/config.php
             **/config.local.php
+            # uploads/ is created ONCE on the server (with its own .htaccess
+            # guard) and holds live user files. Never overwrite from CI —
+            # excluded entirely to avoid clobbering or 553 errors on hosts
+            # that don't auto-create the directory.
             **/uploads/**
-            !**/uploads/.htaccess
-            !**/uploads/.gitkeep
             **/*.log
             **/*.bak
             **/*.backup
