@@ -34,13 +34,13 @@
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
     --fs-xs:   0.75rem;
-    --fs-sm:   0.875rem;
-    --fs-base: 0.9375rem;
-    --fs-md:   1rem;
-    --fs-lg:   1.125rem;
-    --fs-xl:   1.375rem;
-    --fs-2xl:  1.75rem;
-    --fs-3xl:  2.25rem;
+    --fs-sm:   0.8125rem;
+    --fs-base: 0.875rem;
+    --fs-md:   0.9375rem;
+    --fs-lg:   1.0625rem;
+    --fs-xl:   clamp(1.05rem, 0.4vw + 0.9rem, 1.25rem);
+    --fs-2xl:  clamp(1.25rem, 0.7vw + 1rem, 1.625rem);
+    --fs-3xl:  clamp(1.5rem, 1vw + 1.1rem, 2.125rem);
 
     --lh-tight: 1.25;
     --lh-base:  1.5;
@@ -69,8 +69,8 @@
     --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
 
     /* Layout */
-    --sidebar-w: 248px;
-    --topbar-h:  64px;
+    --sidebar-w: clamp(220px, 17vw, 256px);
+    --topbar-h:  60px;
 
     --transition: 160ms ease;
 }
@@ -250,12 +250,14 @@ h3 { font-size: var(--fs-lg); }
     height: var(--topbar-h);
     display: flex;
     align-items: center;
-    gap: var(--sp-4);
-    padding: 0 var(--sp-6);
+    gap: var(--sp-3);
+    padding: 0 clamp(var(--sp-3), 2vw, var(--sp-6));
     position: sticky;
     top: 0;
     z-index: 20;
+    min-width: 0;
 }
+.topbar__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar__toggle {
     display: none;
     background: transparent;
@@ -358,13 +360,16 @@ h3 { font-size: var(--fs-lg); }
 .main {
     display: flex;
     flex-direction: column;
-    min-width: 0;
+    min-width: 0;       /* critical — prevents grid children from forcing horizontal overflow */
+    max-width: 100%;
+    overflow-x: hidden;
 }
 .page {
-    padding: var(--sp-6);
+    padding: clamp(var(--sp-3), 2vw, var(--sp-6));
     max-width: 1400px;
     width: 100%;
     margin: 0 auto;
+    min-width: 0;
 }
 .page-header {
     display: flex;
@@ -451,11 +456,11 @@ h3 { font-size: var(--fs-lg); }
     font-size: var(--fs-sm);
 }
 
-/* Summary cards row */
+/* Summary cards row — auto-fit so 1/2/3/4 up depending on width, no breakpoints needed */
 .summary-grid {
     display: grid;
     gap: var(--sp-4);
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
     margin-bottom: var(--sp-6);
 }
 .summary {
@@ -488,22 +493,29 @@ h3 { font-size: var(--fs-lg); }
 .summary__delta--up   { color: var(--color-success); }
 .summary__delta--down { color: var(--color-danger); }
 
-/* Dashboard grid */
+/* Dashboard grid — 2/1 intent on wide, stacks to 1 col on narrow */
 .dash-grid {
     display: grid;
     gap: var(--sp-4);
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
     margin-bottom: var(--sp-6);
+}
+@media (min-width: 1100px) {
+    .dash-grid { grid-template-columns: 2fr 1fr; }
 }
 .dash-grid--three {
     display: grid;
     gap: var(--sp-4);
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
     margin-bottom: var(--sp-6);
 }
 
 /* Table */
-.table-wrap { overflow-x: auto; }
+.table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -802,18 +814,14 @@ h3 { font-size: var(--fs-lg); }
     .flash-area { right: var(--sp-3); left: var(--sp-3); max-width: none; }
 }
 
-/* Filter row + inline forms */
+/* Filter row + inline forms — auto-fit so it flows on any width */
 .filters {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
     gap: var(--sp-3);
     align-items: end;
 }
-.filters__actions { display: flex; gap: var(--sp-2); }
-@media (max-width: 1024px) {
-    .filters { grid-template-columns: 1fr 1fr; }
-    .filters__actions { grid-column: 1 / -1; }
-}
+.filters__actions { display: flex; gap: var(--sp-2); align-items: end; }
 .inline-form { display: inline-block; margin: 0; padding: 0; }
 .col-progress { min-width: 160px; }
 .col-min-160 { min-width: 160px; }
