@@ -4,29 +4,30 @@
    ========================================================================= */
 
 :root {
-    /* Palette */
-    --color-primary:        #2563eb;
-    --color-primary-600:    #1d4ed8;
-    --color-primary-50:     #eff6ff;
+    /* Palette — refreshed */
+    --color-primary:        #1D4ED8;
+    --color-primary-600:    #1E40AF;
+    --color-primary-50:     #EFF6FF;
 
-    --color-bg:             #f6f8fb;
-    --color-surface:        #ffffff;
-    --color-surface-alt:    #fbfcfe;
-    --color-border:         #e5e9f0;
-    --color-border-strong:  #d5dbe6;
+    --color-bg:             #F4F7FB;
+    --color-surface:        #FFFFFF;
+    --color-surface-alt:    #F8FAFC;
+    --color-border:         #E5E9F0;
+    --color-border-strong:  #CBD5E1;
 
-    --color-text:           #0f172a;
-    --color-text-muted:     #5b6577;
-    --color-text-soft:      #8b93a4;
+    --color-text:           #0F172A;
+    --color-text-body:      #334155;
+    --color-text-muted:     #64748B;
+    --color-text-soft:      #94A3B8;
 
-    --color-success:        #16a34a;
-    --color-success-soft:   #e8f6ec;
-    --color-warning:        #d97706;
-    --color-warning-soft:   #fdf3e2;
-    --color-danger:         #dc2626;
-    --color-danger-soft:    #fdecec;
-    --color-info:           #0891b2;
-    --color-info-soft:      #e0f4f8;
+    --color-success:        #065F46;
+    --color-success-soft:   #D1FAE5;
+    --color-warning:        #78350F;
+    --color-warning-soft:   #FEF3C7;
+    --color-danger:         #B91C1C;
+    --color-danger-soft:    #FEE2E2;
+    --color-info:           #4338CA;
+    --color-info-soft:      #E0E7FF;
 
     /* Typography */
     --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -56,8 +57,8 @@
     --sp-12: 3rem;
 
     /* Radius */
-    --radius-sm: 6px;
-    --radius:    10px;
+    --radius-sm: 8px;
+    --radius:    12px;
     --radius-lg: 14px;
     --radius-xl: 20px;
 
@@ -87,7 +88,34 @@ body {
     color: var(--color-text);
     background: var(--color-bg);
     min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
 }
+/* Wavy blue background — pure CSS, no images, subtle on top of --color-bg. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(1000px 400px at 15% -10%, rgba(29, 78, 216, 0.10), transparent 60%),
+        radial-gradient(900px  380px at 90% 12%, rgba(67, 56, 202, 0.08), transparent 60%),
+        radial-gradient(700px  320px at 50% 110%, rgba(29, 78, 216, 0.07), transparent 60%);
+}
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.55;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 800' preserveAspectRatio='none'><path d='M0,600 C240,540 480,720 720,640 C960,560 1200,700 1440,620 L1440,800 L0,800 Z' fill='%231D4ED8' fill-opacity='0.05'/><path d='M0,660 C260,580 520,760 780,680 C1040,600 1300,740 1440,700 L1440,800 L0,800 Z' fill='%234338CA' fill-opacity='0.05'/><path d='M0,140 C220,200 460,60 720,120 C980,180 1220,80 1440,140 L1440,0 L0,0 Z' fill='%231D4ED8' fill-opacity='0.04'/></svg>");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+p  { margin: 0 0 var(--sp-3) 0; color: var(--color-text-body); }
 a { color: var(--color-primary); text-decoration: none; }
 a:hover { color: var(--color-primary-600); text-decoration: underline; }
 img, svg { max-width: 100%; display: block; }
@@ -97,7 +125,6 @@ h1, h2, h3, h4, h5 { margin: 0 0 var(--sp-2) 0; line-height: var(--lh-tight); fo
 h1 { font-size: var(--fs-2xl); }
 h2 { font-size: var(--fs-xl); }
 h3 { font-size: var(--fs-lg); }
-p  { margin: 0 0 var(--sp-3) 0; color: var(--color-text-muted); }
 
 .visually-hidden {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -404,7 +431,8 @@ p  { margin: 0 0 var(--sp-3) 0; color: var(--color-text-muted); }
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xs);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: saturate(1.2);
 }
 .card__header {
     padding: var(--sp-4) var(--sp-5);
