@@ -12,7 +12,12 @@
  * If the file already exists, this script refuses to overwrite it.
  */
 
-if (PHP_SAPI !== 'cli') {
+// Refuse execution over a REAL web request. cPanel sometimes runs cron
+// commands through a CGI handler (SAPI != 'cli'), so we detect a web
+// request specifically by the presence of HTTP env vars.
+$is_web_request = PHP_SAPI !== 'cli'
+    && (isset($_SERVER['HTTP_HOST']) || isset($_SERVER['REMOTE_ADDR']) || isset($_SERVER['REQUEST_METHOD']));
+if ($is_web_request) {
     http_response_code(403);
     header('Content-Type: text/plain');
     echo "CLI-only.\n";

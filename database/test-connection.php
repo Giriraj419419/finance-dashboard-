@@ -15,7 +15,9 @@
  * Output NEVER prints credentials, SQL queries, or stack traces.
  */
 
-if (PHP_SAPI !== 'cli') {
+$is_web_request = PHP_SAPI !== 'cli'
+    && (isset($_SERVER['HTTP_HOST']) || isset($_SERVER['REMOTE_ADDR']) || isset($_SERVER['REQUEST_METHOD']));
+if ($is_web_request) {
     http_response_code(403);
     header('Content-Type: text/plain; charset=utf-8');
     echo "This script is CLI-only. Run it from the shell, not the browser.\n";
