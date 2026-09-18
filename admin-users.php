@@ -48,7 +48,8 @@ require_once __DIR__ . '/includes/topbar.php';
     <div class="breadcrumbs"><span><a href="dashboard.php">Home</a></span><span>Users</span></div>
     <div class="page-header">
         <div><h1 class="page-header__title">User management</h1><p class="page-header__desc">Admin-only. Manage team members, roles, and account status.</p></div>
-        <div class="page-header__actions"><a class="btn btn--primary" href="admin-user-form.php">Add user</a></div>
+        <!-- Public signup is disabled and this deployment is single-user; no "Add user" action. -->
+        <div class="page-header__actions"><span class="text-soft">Single-user deployment — new users are not created from the UI.</span></div>
     </div>
 
     <section class="card">

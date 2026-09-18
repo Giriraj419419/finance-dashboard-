@@ -202,6 +202,7 @@ CREATE TABLE IF NOT EXISTS reminders (
     title                 VARCHAR(200)   NOT NULL,
     description           TEXT           NULL,
     priority              ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
+    notification_offset_minutes INT UNSIGNED NOT NULL DEFAULT 0,
     reminder_date         DATETIME       NOT NULL,
     recurrence_type       ENUM('none','daily','weekly','monthly','yearly')
                                          NOT NULL DEFAULT 'none',
@@ -317,6 +318,44 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     KEY idx_la_email_time (email, attempted_at),
     KEY idx_la_ip_time    (ip_address, attempted_at),
     KEY idx_la_success    (was_successful)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------
+-- reminder_notifications (added in Phase 6)
+-- ------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reminder_notifications (
+    id                 BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
+    reminder_id        INT UNSIGNED      NOT NULL,
+    user_id            INT UNSIGNED      NOT NULL,
+    scheduled_for      DATETIME          NOT NULL,
+    notification_type  ENUM('email')     NOT NULL DEFAULT 'email',
+    status             ENUM('pending','processing','sent','failed')
+                                         NOT NULL DEFAULT 'pending',
+    attempts           TINYINT UNSIGNED  NOT NULL DEFAULT 0,
+    last_error         VARCHAR(500)      NULL,
+    sent_at            DATETIME          NULL,
+    created_at         DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                         ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_rn_reminder_occurrence (reminder_id, scheduled_for, notification_type),
+    KEY idx_rn_status_scheduled (status, scheduled_for),
+    KEY idx_rn_user (user_id),
+    CONSTRAINT fk_rn_reminder FOREIGN KEY (reminder_id) REFERENCES reminders (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_rn_user     FOREIGN KEY (user_id)     REFERENCES users (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------
+-- system_health (added in Phase 6) — cron heartbeat KV store
+-- ------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS system_health (
+    metric_key    VARCHAR(80)  NOT NULL,
+    metric_value  VARCHAR(200) NULL,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                               ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (metric_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

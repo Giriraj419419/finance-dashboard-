@@ -1,0 +1,2 @@
+# Never expose the cron workers to the public web.
+Require all denied

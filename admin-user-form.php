@@ -9,6 +9,14 @@ $id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
 $is_edit = $id > 0;
 $page_title = $is_edit ? 'Edit user' : 'Add user';
 
+// Single-user deployment: refuse to create additional accounts through the UI.
+// The production account is provisioned via database/create-production-user.php only.
+if (!$is_edit) {
+    flash('danger', 'Creating new users from the UI is disabled. Use database/create-production-user.php on the server.');
+    header('Location: ' . base_url('/admin-users.php'));
+    exit;
+}
+
 $allowed_roles = ['admin','manager','employee'];
 $allowed_status = ['active','inactive','suspended'];
 $errors = [];

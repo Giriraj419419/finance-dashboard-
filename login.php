@@ -134,7 +134,7 @@ $app_name = app_config('app')['name'] ?? 'Finance Dashboard';
             </form>
 
             <div class="form-foot">
-                Don't have an account? <a href="signup.php">Create one</a>
+                <a href="forgot-password.php">Forgot your password?</a>
             </div>
         </div>
     </main>

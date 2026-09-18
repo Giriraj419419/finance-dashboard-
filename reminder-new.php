@@ -9,9 +9,11 @@ $uid = (int) currentUser()['id'];
 
 $allowed_priority = ['low','medium','high'];
 $allowed_recurrence = ['none','daily','weekly','monthly','yearly'];
+$allowed_offsets = [0 => 'At due time', 5 => '5 min before', 15 => '15 min before', 30 => '30 min before', 60 => '1 hour before', 1440 => '1 day before'];
 $errors = [];
 $old = [
     'title' => '', 'description' => '', 'priority' => 'medium',
+    'notification_offset_minutes' => '0',
     'reminder_date' => date('Y-m-d\TH:i', strtotime('+1 day 09:00')),
     'recurrence_type' => 'none', 'recurrence_end_date' => '',
 ];
@@ -31,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($old['recurrence_end_date'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $old['recurrence_end_date'])) {
         $errors['recurrence_end_date'] = 'Enter a valid end date.';
     }
+    $offset_int = (int) $old['notification_offset_minutes'];
+    if (!array_key_exists($offset_int, $allowed_offsets)) { $errors['notification_offset_minutes'] = 'Pick a valid notification timing.'; }
 
     if ($errors === []) {
         try {
@@ -40,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'title'               => $old['title'],
                 'description'         => $old['description'] === '' ? null : $old['description'],
                 'priority'            => $old['priority'],
+                'notification_offset_minutes' => $offset_int,
                 'reminder_date'       => $due,
                 'recurrence_type'     => $old['recurrence_type'],
                 'recurrence_end_date' => $old['recurrence_end_date'] !== '' ? $old['recurrence_end_date'] : null,
@@ -105,6 +110,16 @@ require_once __DIR__ . '/includes/topbar.php';
                     <input id="recurrence_end_date" name="recurrence_end_date" type="date" value="<?= e($old['recurrence_end_date']) ?>">
                     <div class="error" role="alert"><?= e($errors['recurrence_end_date'] ?? '') ?></div>
                 </div>
+            </div>
+            <div class="field<?= isset($errors['notification_offset_minutes']) ? ' field--error' : '' ?>">
+                <label for="notification_offset_minutes">Email notification</label>
+                <select id="notification_offset_minutes" name="notification_offset_minutes" required>
+                    <?php foreach ($allowed_offsets as $mins => $label): ?>
+                        <option value="<?= (int) $mins ?>" <?= ((int) $old['notification_offset_minutes']) === $mins ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="hint">Server-side cron delivers the email at this offset. Depends on the reminder cron being scheduled on cPanel.</div>
+                <div class="error" role="alert"><?= e($errors['notification_offset_minutes'] ?? '') ?></div>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn--primary">Save reminder</button>

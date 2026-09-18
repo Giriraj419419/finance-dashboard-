@@ -96,11 +96,24 @@ try {
          LIMIT 8',
         [':uid' => $uid]
     );
+
+    // Reminder-worker health (admin only, populated by cron/reminder-worker.php).
+    $worker_health = [];
+    if (($me['role'] ?? '') === 'admin') {
+        try {
+            $rows = fetchAll("SELECT metric_key, metric_value, updated_at FROM system_health WHERE metric_key LIKE 'reminder_worker_%'");
+            foreach ($rows as $row) { $worker_health[$row['metric_key']] = $row; }
+        } catch (Throwable $e) {
+            // Non-fatal — table may not exist on pre-migration installs.
+            $worker_health = [];
+        }
+    }
 } catch (Throwable $e) {
     error_log('[dashboard] ' . $e->getMessage());
     $totals = ['total_income' => 0, 'total_expense' => 0];
     $recent = $budgets = $goals = $upcoming_payments = $reminders = $recent_activity = [];
     $po_summary = ['total' => 0, 'in_progress' => 0, 'approved' => 0, 'completed' => 0];
+    $worker_health = [];
     flash('danger', 'Could not load your dashboard right now. Please refresh.');
 }
 
@@ -352,6 +365,39 @@ require_once __DIR__ . '/includes/topbar.php';
             <?php endforeach; endif; ?>
         </div>
     </section>
+
+    <?php if (($me['role'] ?? '') === 'admin'): ?>
+        <?php
+            $last_run   = $worker_health['reminder_worker_last_run']['metric_value']  ?? null;
+            $last_ok    = $worker_health['reminder_worker_last_success']['metric_value'] ?? null;
+            $last_err   = $worker_health['reminder_worker_last_error']['metric_value']   ?? null;
+            $last_res   = $worker_health['reminder_worker_last_result']['metric_value']  ?? null;
+            $healthy    = false;
+            if ($last_run !== null) {
+                $healthy = (strtotime((string) $last_run) >= time() - 15 * 60);
+            }
+            $badge = $healthy ? 'success' : ($last_run === null ? 'neutral' : 'warning');
+            $badge_label = $healthy ? 'Healthy' : ($last_run === null ? 'Not configured' : 'Needs attention');
+        ?>
+        <section class="card mt-6">
+            <div class="card__header">
+                <h2 class="card__title">Reminder worker</h2>
+                <span class="badge badge--<?= e($badge) ?>"><?= e($badge_label) ?></span>
+            </div>
+            <div class="card__body">
+                <?php if ($last_run === null): ?>
+                    <p class="text-muted">Cron job has never run against this database yet. Configure the cPanel cron per docs/CPANEL-DEPLOYMENT.md — reminders will not deliver by email until it is scheduled.</p>
+                <?php else: ?>
+                    <div class="item-row"><div class="item-row__grow"><div class="item-row__title">Last run</div></div><div><?= e($last_run) ?></div></div>
+                    <div class="item-row"><div class="item-row__grow"><div class="item-row__title">Last successful send</div></div><div><?= e($last_ok ?? '—') ?></div></div>
+                    <div class="item-row"><div class="item-row__grow"><div class="item-row__title">Last result</div></div><div><?= e($last_res ?? '—') ?></div></div>
+                    <?php if (!empty($last_err)): ?>
+                        <div class="item-row"><div class="item-row__grow"><div class="item-row__title">Last error</div></div><div class="text-danger"><?= e($last_err) ?></div></div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </section>
+    <?php endif; ?>
 </section>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

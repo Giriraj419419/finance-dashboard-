@@ -13,7 +13,8 @@ if ($id <= 0) { header('Location: ' . base_url('/reminders.php')); exit; }
 
 try {
     $r = fetchOne(
-        'SELECT id, user_id, title, description, priority, reminder_date, recurrence_type, recurrence_end_date, status
+        'SELECT id, user_id, title, description, priority, notification_offset_minutes,
+                reminder_date, recurrence_type, recurrence_end_date, status
          FROM reminders WHERE id = :id LIMIT 1',
         [':id' => $id]
     );
@@ -31,11 +32,13 @@ if ((int) $r['user_id'] !== $uid && $role !== 'admin') {
 $allowed_priority = ['low','medium','high'];
 $allowed_recurrence = ['none','daily','weekly','monthly','yearly'];
 $allowed_status = ['pending','completed','snoozed','cancelled'];
+$allowed_offsets = [0 => 'At due time', 5 => '5 min before', 15 => '15 min before', 30 => '30 min before', 60 => '1 hour before', 1440 => '1 day before'];
 
 $errors = [];
 $old = [
     'title' => $r['title'], 'description' => $r['description'] ?? '',
     'priority' => $r['priority'],
+    'notification_offset_minutes' => (string) (int) ($r['notification_offset_minutes'] ?? 0),
     'reminder_date' => date('Y-m-d\TH:i', strtotime((string) $r['reminder_date'])),
     'recurrence_type' => $r['recurrence_type'],
     'recurrence_end_date' => $r['recurrence_end_date'] ?? '',
@@ -53,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($old['recurrence_type'], $allowed_recurrence, true))   { $errors['recurrence_type'] = 'Pick a valid recurrence.'; }
     if ($old['recurrence_end_date'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $old['recurrence_end_date'])) { $errors['recurrence_end_date'] = 'Enter a valid end date.'; }
     if (!in_array($old['status'], $allowed_status, true))                { $errors['status'] = 'Pick a valid status.'; }
+    $offset_int = (int) $old['notification_offset_minutes'];
+    if (!array_key_exists($offset_int, $allowed_offsets)) { $errors['notification_offset_minutes'] = 'Pick a valid notification timing.'; }
 
     if ($errors === []) {
         try {
@@ -61,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'title'               => $old['title'],
                 'description'         => $old['description'] === '' ? null : $old['description'],
                 'priority'            => $old['priority'],
+                'notification_offset_minutes' => $offset_int,
                 'reminder_date'       => $due,
                 'recurrence_type'     => $old['recurrence_type'],
                 'recurrence_end_date' => $old['recurrence_end_date'] !== '' ? $old['recurrence_end_date'] : null,
@@ -127,6 +133,16 @@ require_once __DIR__ . '/includes/topbar.php';
                     </select>
                     <div class="error" role="alert"><?= e($errors['status'] ?? '') ?></div>
                 </div>
+            </div>
+            <div class="field<?= isset($errors['notification_offset_minutes']) ? ' field--error' : '' ?>">
+                <label for="notification_offset_minutes">Email notification</label>
+                <select id="notification_offset_minutes" name="notification_offset_minutes" required>
+                    <?php foreach ($allowed_offsets as $mins => $label): ?>
+                        <option value="<?= (int) $mins ?>" <?= ((int) $old['notification_offset_minutes']) === $mins ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="hint">Server-side cron delivers the email at this offset.</div>
+                <div class="error" role="alert"><?= e($errors['notification_offset_minutes'] ?? '') ?></div>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn--primary">Save changes</button>

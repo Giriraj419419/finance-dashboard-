@@ -43,8 +43,104 @@ Import the following in order, via phpMyAdmin or shell:
 
 1. `database/migration-004-phase4.sql` — Phase 4 tables (skip if already applied).
 2. `database/migration-005-phase5.sql` — Phase 5 columns.
+3. `database/migration-006-reminder-notifications.sql` — Phase 6: reminder notification tracking + `notification_offset_minutes` + `system_health`.
 
-Both files are idempotent — they can be re-run without side effects.
+All files are idempotent — they can be re-run without side effects.
+
+## Single-user production mode
+
+This deployment runs as a SINGLE-USER application. Public signup is disabled:
+
+- `signup.php` redirects unconditionally to `login.php` with an "sign-up disabled" flash.
+- The login page has no "Create one" link.
+- The admin Users page has no "Add user" button; `admin-user-form.php` refuses to create new accounts.
+
+### Provisioning the production account
+
+The production account is:
+
+- Email: `accounts@kktechsolutions.in`
+- Role:  `admin`
+- Status: `active`
+
+The password is NEVER stored in git, code, SQL seeds, or docs. Provision it with the interactive CLI tool:
+
+```bash
+cd /home/kktechsolutions/public_html/finance.kktechsolutions.in
+php database/create-production-user.php
+```
+
+The script:
+
+- Refuses to run under any web SAPI (also blocked by `database/.htaccess`).
+- Reads the password without echoing (uses `stty -echo`).
+- Requires ≥ 8 chars with at least one digit.
+- Bcrypts with the configured cost.
+- Refuses to create a second production user; existing accounts can only have their password rotated.
+- Invalidates any active password-reset tokens.
+- Never prints the password or hash.
+
+To rotate the password later, run the same command again.
+
+## Reminder notification setup
+
+The reminder system uses a **cPanel Cron Job** as the primary off-site notification mechanism. Reminders send email **even when the browser or dashboard is closed**, because the cron worker runs on the server independent of any user session.
+
+### 1. Apply migration 006
+
+Import `database/migration-006-reminder-notifications.sql` via phpMyAdmin.
+
+### 2. Verify SMTP config
+
+Your `config.php` must have valid `mail.*` values (host, port, secure, username, password, from_email). Test with:
+
+```bash
+php cron/test-reminder.php
+```
+
+It prints your mail config without credentials and sends one test email to `accounts@kktechsolutions.in`. Look for `[ok] send_mail returned true` and confirm the message arrives.
+
+### 3. Schedule the cron job
+
+cPanel → **Cron Jobs** → **Add New Cron Job**:
+
+- **Common Settings**: Once Every 5 Minutes (`*/5 * * * *`).
+- **Command**:
+  ```
+  php /home/kktechsolutions/public_html/finance.kktechsolutions.in/cron/reminder-worker.php >> /home/kktechsolutions/logs/reminder-worker.log 2>&1
+  ```
+  Adjust the log path to a writable directory (or omit the `>> log 2>&1` if you don't need file logs — the worker also writes to `error_log`).
+
+### 4. Verify it's running
+
+Wait for the cron to fire (~5 min). Then:
+
+- Sign in as admin → the dashboard shows a **Reminder worker** card with:
+  - Badge: **Healthy** when the last run was within 15 minutes.
+  - **Last run**, **Last successful send**, **Last result**, **Last error** fields.
+- Or check phpMyAdmin → `system_health` table.
+
+### 5. Test a real reminder
+
+- Create a reminder due in ~7 minutes with **Email notification: At due time**.
+- Wait for the next cron run after the due time.
+- Email arrives at `accounts@kktechsolutions.in`.
+- Verify a `reminder_notifications` row with `status = 'sent'` and populated `sent_at`.
+- Delete the test reminder afterwards.
+
+### How it handles edge cases
+
+- **Duplicate cron runs** — UNIQUE key on `(reminder_id, scheduled_for, notification_type)` in `reminder_notifications` is the atomic claim. Second concurrent worker gets a duplicate-key error, silently skips.
+- **Recurring reminders** — for daily/weekly/monthly/yearly, the worker computes the next occurrence and inserts a fresh pending row for it. Each occurrence is a distinct row.
+- **Missed reminders** — the catch-up window is `REMINDER_CATCHUP_WINDOW_HOURS = 24`. Overdue notifications within 24 hours are still sent. Older ones are ignored (change the constant in `cron/reminder-worker.php` to widen).
+- **Retry** — up to `MAX_ATTEMPTS = 3`. After that the row is marked `failed`; no further attempts.
+- **Completed reminders** — worker skips rows where `reminders.status != 'pending'`.
+- **Cron unavailable** — dashboard health card flags "Not configured" or "Needs attention". Reminders are still visible in the UI but no emails are sent until the cron fires.
+
+### Log locations
+
+- Worker writes structured JSON via `error_log()` — visible in cPanel → Metrics → Errors, prefixed `[reminder-worker]`.
+- Optional file log at whatever path you point the cron command's `>>` to. Rotate manually (`logrotate` on cPanel is per-account).
 
 ## Post-deploy checklist
 
