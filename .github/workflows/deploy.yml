@@ -4,7 +4,7 @@
 # Manual runs are available via workflow_dispatch.
 #
 # Required GitHub Secrets (Settings → Secrets and variables → Actions):
-#   FTP_HOST      — cPanel FTP host, e.g. ftp.kktechsolutions.in
+#   FTP_SERVER    — cPanel FTP host, e.g. ftp.kktechsolutions.in
 #   FTP_USERNAME  — the FTP user (cPanel → FTP Accounts). Prefer a per-repo
 #                   FTP user with home dir = the site's document root.
 #   FTP_PASSWORD  — the FTP account password. Never hard-code.
@@ -58,12 +58,12 @@ jobs:
 
       - name: Validate deployment configuration
         env:
-          FTP_HOST:     ${{ secrets.FTP_HOST }}
+          FTP_SERVER:   ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           missing=0
-          for name in FTP_HOST FTP_USERNAME FTP_PASSWORD; do
+          for name in FTP_SERVER FTP_USERNAME FTP_PASSWORD; do
             if [ -z "${!name}" ]; then
               echo "::error::Repository secret '$name' is not set. Add it under Settings → Secrets and variables → Actions."
               missing=1
@@ -77,7 +77,7 @@ jobs:
       - name: Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_HOST }}
+          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT || 21 }}
