@@ -82,7 +82,11 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT || 21 }}
           protocol: ftps
-          security: strict
+          # `loose` still encrypts the connection with TLS; it only relaxes the
+          # hostname check on the server's cert. This is standard on shared
+          # cPanel hosting where the FTP cert is for the underlying provider
+          # (e.g. *.interactivedns.com) rather than the customer's domain.
+          security: loose
           server-dir: ${{ secrets.FTP_REMOTE_DIR || './' }}
           local-dir: ./
           # Files EXCLUDED from every deploy — never overwrite the server's
