@@ -7,12 +7,10 @@ if (!isset($page_title)) {
     $page_title = 'Dashboard';
 }
 
-// Phase 1 placeholder user shown when nobody is logged in.
-$user = current_user() ?? [
-    'name'  => 'Guest User',
-    'email' => 'guest@example.com',
-    'role'  => 'employee',
-];
+// The topbar is only rendered from pages that have already called
+// requireLogin() (via includes/auth-check.php), so current_user() is
+// never null here.
+$user = current_user();
 $initials = strtoupper(mb_substr((string) ($user['name'] ?? 'U'), 0, 1));
 ?>
 <main class="main">
@@ -23,22 +21,8 @@ $initials = strtoupper(mb_substr((string) ($user['name'] ?? 'U'), 0, 1));
             </svg>
         </button>
         <div class="topbar__title"><?= e($page_title) ?></div>
-        <div class="topbar__search">
-            <span class="topbar__search-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
-                </svg>
-            </span>
-            <input type="search" placeholder="Search transactions, budgets, goals…" aria-label="Search">
-        </div>
         <div class="topbar__spacer"></div>
         <div class="topbar__actions">
-            <button type="button" class="topbar__icon-btn" aria-label="Notifications">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 8H4c0-2 2-3 2-8z"/><path d="M10 20a2 2 0 0 0 4 0"/>
-                </svg>
-                <span class="dot" aria-hidden="true"></span>
-            </button>
             <div class="user-menu">
                 <button type="button" class="user-menu__trigger" data-user-menu-trigger aria-haspopup="menu" aria-expanded="false">
                     <span class="user-menu__avatar" aria-hidden="true"><?= e($initials) ?></span>

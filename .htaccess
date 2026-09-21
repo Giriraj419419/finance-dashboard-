@@ -8,7 +8,11 @@ Options -Indexes
 DirectoryIndex index.php index.html
 
 # --- Deny access to sensitive files --------------------------------------
-<FilesMatch "^(config\.php|config\.example\.php|database\.php|auth\.php|csrf\.php|functions\.php|mailer\.php|\.env.*|.*\.sql|.*\.md|composer\.(json|lock)|package(-lock)?\.json|.*\.(bak|backup|log|ini|conf))$">
+# Include-only PHP helpers (audit, csrf, database, auth, mailer, login-throttle,
+# push-webpush) are require_once'd from entry pages — they must never be
+# fetched directly. db-diag.php was a one-off diagnostic and is denied here
+# in case any stale copy lingers on the server after the file was removed.
+<FilesMatch "^(config\.php|config\.example\.php|database\.php|auth\.php|csrf\.php|functions\.php|mailer\.php|login-throttle\.php|audit\.php|push-webpush\.php|db-diag\.php|\.env.*|.*\.sql|.*\.md|composer\.(json|lock)|package(-lock)?\.json|.*\.(bak|backup|log|ini|conf|pem|key))$">
     Require all denied
 </FilesMatch>
 
@@ -38,4 +42,8 @@ RedirectMatch 403 ^.*/includes/.*$
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    # HSTS — the production domain has been on HTTPS with a valid cert
+    # since Phase 6. One-year max-age, subdomains included. Do NOT add
+    # `preload` unless the domain is submitted to hstspreload.org.
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>

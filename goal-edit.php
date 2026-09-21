@@ -30,9 +30,12 @@ if ((int) $g['user_id'] !== $uid && $role !== 'admin') {
 
 $allowed_status = ['active', 'paused', 'achieved', 'archived'];
 $errors = [];
+// current_amount is NOT editable here. All balance changes must go through
+// goal-contribute.php so the goal_contributions ledger stays consistent with
+// goals.current_amount. Displayed below for context only.
 $old = [
     'name' => $g['name'], 'target_amount' => $g['target_amount'],
-    'current_amount' => $g['current_amount'], 'target_date' => $g['target_date'] ?? '',
+    'target_date' => $g['target_date'] ?? '',
     'status' => $g['status'],
 ];
 
@@ -42,11 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($old['name'] === '' || mb_strlen($old['name']) > 160) { $errors['name'] = 'Name is required (max 160 characters).'; }
     $target_raw  = str_replace([',', ' '], '', $old['target_amount']);
-    $current_raw = str_replace([',', ' '], '', $old['current_amount']);
     if (!is_numeric($target_raw)  || (float) $target_raw  <= 0) { $errors['target_amount']  = 'Enter a positive target amount.'; }
-    if (!is_numeric($current_raw) || (float) $current_raw < 0)  { $errors['current_amount'] = 'Current amount cannot be negative.'; }
-    if (empty($errors['target_amount']) && empty($errors['current_amount']) && (float) $current_raw > (float) $target_raw) {
-        $errors['current_amount'] = 'Current amount cannot exceed the target.';
+    if (empty($errors['target_amount']) && (float) $g['current_amount'] > (float) $target_raw) {
+        $errors['target_amount'] = 'Target cannot be lower than the amount already saved (' . e(money((float) $g['current_amount'])) . ').';
     }
     if ($old['target_date'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $old['target_date'])) {
         $errors['target_date'] = 'Enter a valid target date.';
@@ -58,11 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             updateRecord('goals', [
                 'name'           => $old['name'],
                 'target_amount'  => number_format((float) $target_raw,  2, '.', ''),
-                'current_amount' => number_format((float) $current_raw, 2, '.', ''),
                 'target_date'    => $old['target_date'] !== '' ? $old['target_date'] : null,
                 'status'         => $old['status'],
             ], ['id' => $id]);
-            log_audit('goal_updated', 'goal', $id, ['name' => $old['name'], 'target' => (float) $target_raw, 'current' => (float) $current_raw]);
+            log_audit('goal_updated', 'goal', $id, ['name' => $old['name'], 'target' => (float) $target_raw]);
             flash('success', 'Goal updated.');
             header('Location: ' . base_url('/goals.php')); exit;
         } catch (Throwable $ex) {
@@ -97,10 +97,13 @@ require_once __DIR__ . '/includes/topbar.php';
                     <input id="target_amount" name="target_amount" type="number" step="0.01" min="0.01" required value="<?= e($old['target_amount']) ?>">
                     <div class="error" role="alert"><?= e($errors['target_amount'] ?? '') ?></div>
                 </div>
-                <div class="field<?= isset($errors['current_amount']) ? ' field--error' : '' ?>">
-                    <label for="current_amount">Current amount</label>
-                    <input id="current_amount" name="current_amount" type="number" step="0.01" min="0" required value="<?= e($old['current_amount']) ?>">
-                    <div class="error" role="alert"><?= e($errors['current_amount'] ?? '') ?></div>
+                <div class="field">
+                    <label>Saved so far</label>
+                    <div class="text-muted" style="padding: .5rem 0;">
+                        <?= e(money((float) $g['current_amount'])) ?>
+                        &nbsp;·&nbsp;
+                        <a href="<?= e(base_url('/goal-contribute.php?id=' . (int) $id)) ?>">Add a contribution</a>
+                    </div>
                 </div>
             </div>
             <div class="form__row">

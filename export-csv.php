@@ -34,8 +34,10 @@ function csv_cell($v): string
 {
     if ($v === null) return '';
     $s = (string) $v;
-    // Neutralise spreadsheet formulas.
-    if ($s !== '' && strpbrk($s[0], "=+-@\t\r") !== false) {
+    // Neutralise spreadsheet formulas — Excel / LibreOffice / Google Sheets
+    // treat a leading =, +, -, @, tab, CR, LF, or pipe as the start of a
+    // formula. Prefixing with a single quote forces text.
+    if ($s !== '' && strpbrk($s[0], "=+-@\t\r\n|") !== false) {
         $s = "'" . $s;
     }
     return $s;

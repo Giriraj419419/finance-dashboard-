@@ -12,8 +12,11 @@
 #   FTP_REMOTE_DIR — optional, defaults to "./"; set to the site's docroot
 #                    (e.g. "/public_html/finance/" for a sub-folder deploy).
 #
-# The workflow uses FTPS (explicit TLS). `security: strict` in the action
-# refuses to deploy if the TLS handshake fails.
+# The workflow uses FTPS (explicit TLS) with `security: loose`. Loose still
+# encrypts the connection; it only relaxes the hostname check on the FTP
+# server's cert, which is required on shared cPanel hosts where the cert is
+# for the underlying provider (e.g. *.interactivedns.com) rather than the
+# customer's domain. See the `security:` note in the deploy step.
 #
 # `config.php`, `uploads/`, `videos/`, and dev-only files are excluded — the
 # production `config.php` on the server is never overwritten.
@@ -99,10 +102,13 @@ jobs:
             **/videos/**
             **/docs/**
             **/database/README.md
+            **/database/schema.sql
             **/database/seed.sql
             **/database/migration-*.sql
             **/config.php
             **/config.local.php
+            **/config.example.php
+            **/db-diag.php
             # uploads/ is created ONCE on the server (with its own .htaccess
             # guard) and holds live user files. Never overwrite from CI —
             # excluded entirely to avoid clobbering or 553 errors on hosts
@@ -114,5 +120,8 @@ jobs:
             **/*.sql.gz
             **/*.tmp
             **/*.swp
+            **/*.pem
+            **/*.key
+            **/.env*
             **/README.md
             **/deploy.yml

@@ -84,7 +84,4 @@ $render_link = function (array $item) use ($active) {
             </li>
         </ul>
     </nav>
-    <div class="sidebar__footer">
-        v0.1 · Phase 1 · UI shell
-    </div>
 </aside>

@@ -10,7 +10,7 @@ try {
         "SELECT
             COALESCE(SUM(amount), 0) AS total,
             COALESCE(SUM(CASE WHEN status = 'paid'      THEN amount ELSE 0 END), 0) AS paid,
-            COALESCE(SUM(CASE WHEN status = 'scheduled' THEN amount ELSE 0 END), 0) AS scheduled,
+            COALESCE(SUM(CASE WHEN status = 'scheduled' AND due_date >= CURDATE() THEN amount ELSE 0 END), 0) AS scheduled,
             COALESCE(SUM(CASE WHEN status = 'overdue'   OR (status = 'scheduled' AND due_date < CURDATE()) THEN amount ELSE 0 END), 0) AS overdue,
             COALESCE(SUM(CASE WHEN status = 'cancelled' THEN amount ELSE 0 END), 0) AS cancelled,
             COUNT(*) AS n

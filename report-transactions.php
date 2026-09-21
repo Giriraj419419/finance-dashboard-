@@ -22,11 +22,19 @@ $params = [':uid' => $uid, ':from' => $from, ':to' => $to];
 if ($type   !== '') { $where[] = 'type = :type';       $params[':type'] = $type; }
 if ($status !== '') { $where[] = 'status = :status';   $params[':status'] = $status; }
 if ($category !== '' && mb_strlen($category) <= 120) { $where[] = 'category = :category'; $params[':category'] = $category; }
-if ($q !== '')      { $where[] = '(description LIKE :q OR category LIKE :q)'; $params[':q'] = '%' . $q . '%'; }
+if ($q !== '') {
+    // Escape LIKE wildcards in user input so a `%` or `_` in the search
+    // string doesn't turn into an "anything" match.
+    $q_like = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
+    $where[] = "(description LIKE :q ESCAPE '\\\\' OR category LIKE :q ESCAPE '\\\\')";
+    $params[':q'] = '%' . $q_like . '%';
+}
 $where_sql = implode(' AND ', $where);
 
-// Whitelisted sort columns.
-$sort_col = ['date' => 'transaction_date', 'amount' => 'amount', 'category' => 'category', 'type' => 'type'][$_GET['sort'] ?? 'date'] ?? 'transaction_date';
+// Whitelisted sort columns. Cast to string first so `?sort[]=x` (array) does
+// not raise a PHP warning at the array lookup.
+$sort_key = is_string($_GET['sort'] ?? null) ? $_GET['sort'] : 'date';
+$sort_col = ['date' => 'transaction_date', 'amount' => 'amount', 'category' => 'category', 'type' => 'type'][$sort_key] ?? 'transaction_date';
 $sort_dir = ($_GET['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
 
 try {

@@ -44,6 +44,7 @@ Import the following in order, via phpMyAdmin or shell:
 1. `database/migration-004-phase4.sql` — Phase 4 tables (skip if already applied).
 2. `database/migration-005-phase5.sql` — Phase 5 columns.
 3. `database/migration-006-reminder-notifications.sql` — Phase 6: reminder notification tracking + `notification_offset_minutes` + `system_health`.
+4. `database/migration-007-push-notifications.sql` — Phase 7: `push_subscriptions` + `user_notification_preferences` + `reminder_notifications.channel` column.
 
 All files are idempotent — they can be re-run without side effects.
 
@@ -142,6 +143,67 @@ Wait for the cron to fire (~5 min). Then:
 - Worker writes structured JSON via `error_log()` — visible in cPanel → Metrics → Errors, prefixed `[reminder-worker]`.
 - Optional file log at whatever path you point the cron command's `>>` to. Rotate manually (`logrotate` on cPanel is per-account).
 
+## Web Push (background notifications)
+
+Reminders can also deliver via Web Push in addition to email, so the user
+gets a browser/OS notification even when the dashboard tab is closed.
+
+### 1. Apply migration 007
+
+Import `database/migration-007-push-notifications.sql`.
+
+### 2. Generate a VAPID key pair
+
+From cPanel Terminal (or SSH):
+
+```bash
+cd /home/kktechsolutions/public_html/finance.kktechsolutions.in
+php cron/generate-vapid-keys.php
+```
+
+The script:
+
+- Writes the private key PEM to `$HOME/vapid-private.pem` with `chmod 600`.
+- Prints the matching public key (base64url).
+- Refuses to run over the web.
+- Recovers gracefully — if the PEM already exists, it re-derives and
+  prints the public key instead of failing.
+
+Copy the three printed lines into the `push` block of `config.php`:
+
+```php
+'push' => [
+    'vapid_subject'          => 'mailto:accounts@kktechsolutions.in',
+    'vapid_public_key'       => '<the printed base64url public key>',
+    'vapid_private_key_path' => '/home/kktechsolutions/vapid-private.pem',
+],
+```
+
+The private key file and the private key content must **never** enter
+Git, HTML, JavaScript, the service worker, SQL, docs, or any chat message.
+
+### 3. Enable push in the browser
+
+Sign in as `accounts@kktechsolutions.in` → **Profile** → "Enable push
+notifications". Grant permission when the browser prompts. The button
+flips to "Push notifications are enabled on this browser."
+
+### 4. Verify with the built-in test push
+
+Still on the profile page: click **"Send test"**. A notification should
+appear within a few seconds. If it does not, check:
+
+- `Notification.permission` in devtools console — must be `"granted"`
+- Windows Focus Assist / macOS Do Not Disturb — turn off during testing
+- cPanel error log for `[push-webpush]` entries
+
+### 5. Real end-to-end test
+
+Create a reminder due in ~7 minutes. Wait for the next cron run after
+the due time. Push and email arrive together at `accounts@kktechsolutions.in`
+and any subscribed browser. Row in `reminder_notifications` shows
+`status = 'sent'` with `sent_at` populated. Delete the test reminder.
+
 ## Post-deploy checklist
 
 - [ ] `config.php` has real credentials — and only on the server, never in git.
@@ -149,11 +211,15 @@ Wait for the cron to fire (~5 min). Then:
 - [ ] `app.environment = 'production'`, `app.debug = false`.
 - [ ] `app.base_url` set to your public URL.
 - [ ] HTTPS redirect uncommented in root `.htaccess` (see the block near the bottom).
-- [ ] Uploaded a fresh copy of `.htaccess` files (root, `uploads/`, `database/`, `includes/`).
+- [ ] Uploaded a fresh copy of `.htaccess` files (root, `uploads/`, `database/`, `includes/`, `cron/`).
+- [ ] `db-diag.php` is NOT present on the server (it was a temporary diagnostic; the deploy workflow now excludes it, and the root `.htaccess` denies it defensively).
 - [ ] Confirmed that `curl https://your-domain/config.php` returns a 403.
 - [ ] Confirmed that `curl https://your-domain/database/schema.sql` returns a 403.
+- [ ] Confirmed that `curl https://your-domain/push-webpush.php` returns a 403 (include-only helper).
 - [ ] Confirmed that a login round-trip completes and `last_login_at` populates.
 - [ ] Confirmed that a password-reset email arrives at a real inbox.
+- [ ] Confirmed the reminder cron is scheduled and fired at least once (`system_health` row + reminder-worker.log).
+- [ ] VAPID keys generated and Web Push test succeeds from the profile page.
 - [ ] Rotated the three seed passwords from `database/README.md`.
 
 ## Optional maintenance cron
@@ -188,7 +254,7 @@ Keep this longer than your compliance window requires.
 
 | Secret | Purpose |
 |---|---|
-| `FTP_HOST` | cPanel FTP host, e.g. `ftp.kktechsolutions.in` |
+| `FTP_SERVER` | cPanel FTP host, e.g. `ftp.kktechsolutions.in` |
 | `FTP_USERNAME` | Dedicated FTP user for this repo. Best practice: create a per-repo FTP user in cPanel → FTP Accounts, with home directory pinned to the site's document root. |
 | `FTP_PASSWORD` | The FTP account's password. Never commit it. |
 | `FTP_PORT` | Optional; defaults to 21. |

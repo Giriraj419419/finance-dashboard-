@@ -65,16 +65,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 flash('danger', 'Goal not found.');
                 header('Location: ' . base_url('/goals.php')); exit;
             }
-            $new_current = (float) $cur['current_amount'] + (float) $amount_raw;
-            if ($new_current > (float) $cur['target_amount']) {
-                // Cap defensively — schema doesn't model overfunding.
-                $new_current = (float) $cur['target_amount'];
+            // Compute the amount that will actually be applied. Under
+            // concurrent submissions the FOR UPDATE re-read can show the goal
+            // has already been (partially) topped up — in that case we cap
+            // the ledger entry so the goal_contributions total exactly
+            // matches goals.current_amount. Never record more than what was
+            // actually added to the goal.
+            $applied_amount = (float) $amount_raw;
+            $room = (float) $cur['target_amount'] - (float) $cur['current_amount'];
+            if ($room <= 0) {
+                $pdo->rollBack();
+                flash('info', 'This goal is already fully funded.');
+                header('Location: ' . base_url('/goals.php')); exit;
             }
+            if ($applied_amount > $room) {
+                $applied_amount = $room;
+            }
+            $new_current = (float) $cur['current_amount'] + $applied_amount;
 
             insertRecord('goal_contributions', [
                 'goal_id'           => $id,
                 'user_id'           => $uid,
-                'amount'            => number_format((float) $amount_raw, 2, '.', ''),
+                'amount'            => number_format($applied_amount, 2, '.', ''),
                 'contribution_date' => $old['contribution_date'],
                 'note'              => $old['note'] === '' ? null : $old['note'],
             ]);
@@ -90,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             log_audit('goal_contributed', 'goal', $id, [
-                'amount'     => (float) $amount_raw,
+                'amount'     => $applied_amount,
                 'new_total'  => $new_current,
             ]);
             flash('success', 'Contribution recorded.');

@@ -11,12 +11,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['ok' => false, 'error' => 'method']);
     exit;
 }
+
+// Accept both form-encoded (default from ui/js/push.js) and JSON bodies.
+// JSON is transparently promoted into $_POST so csrf_check_or_die and the
+// $_POST read below both see the same values regardless of encoding.
+$ct = strtolower($_SERVER['CONTENT_TYPE'] ?? '');
+if (strpos($ct, 'application/json') !== false) {
+    $raw = file_get_contents('php://input');
+    $body = json_decode($raw, true) ?: [];
+    if (isset($body['_csrf']))    $_POST['_csrf']    = $body['_csrf'];
+    if (isset($body['endpoint'])) $_POST['endpoint'] = $body['endpoint'];
+}
 csrf_check_or_die();
 
 $uid = (int) currentUser()['id'];
-$raw = file_get_contents('php://input');
-$body = json_decode($raw, true) ?: [];
-$endpoint = (string) ($body['endpoint'] ?? '');
+$endpoint = (string) ($_POST['endpoint'] ?? '');
 if ($endpoint === '') {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'endpoint']);
