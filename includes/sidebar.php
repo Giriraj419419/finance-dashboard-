@@ -20,9 +20,10 @@ $nav_main = [
     ['label' => 'Reports',         'href' => 'reports.php',          'icon' => 'chart'],
 ];
 $nav_account = [
-    ['label' => 'Profile',  'href' => 'profile.php',      'icon' => 'user'],
-    ['label' => 'Users',    'href' => 'admin-users.php',  'icon' => 'user', 'roles' => ['admin']],
-    ['label' => 'Settings', 'href' => 'settings.php',     'icon' => 'gear', 'roles' => ['admin']],
+    ['label' => 'Profile',     'href' => 'profile.php',           'icon' => 'user'],
+    ['label' => 'Users',       'href' => 'admin-users.php',       'icon' => 'user', 'roles' => ['admin']],
+    ['label' => 'Settings',    'href' => 'settings.php',          'icon' => 'gear', 'roles' => ['admin']],
+    ['label' => 'Diagnostics', 'href' => 'admin-diagnostics.php', 'icon' => 'gear', 'roles' => ['admin']],
 ];
 
 function sidebar_icon(string $name): string

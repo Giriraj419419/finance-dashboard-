@@ -1,21 +1,29 @@
 # Production Diagnostics & Verification Runbook
 
-New diagnostics and tests introduced during the production-hardening pass.
+Diagnostics and tests introduced during the production-hardening pass.
 Every command in this document is non-destructive unless explicitly
 flagged. All CLI scripts refuse to run under a web SAPI.
+
+## Recommended path for hosts without SSH
+
+Modern cPanel installs frequently do not expose Terminal / SSH. In that
+case, use the **admin-only Production Diagnostics page** described
+below. It runs the same check logic as the CLI scripts, gated by
+`requireRole('admin')`, and never renders any secret value.
 
 ## Table of contents
 
 1. [Automated CI gates](#automated-ci-gates)
-2. [Production config validator](#production-config-validator)
-3. [Live health endpoint](#live-health-endpoint)
-4. [Database production-health CLI](#database-production-health-cli)
-5. [Cron heartbeat health CLI](#cron-heartbeat-health-cli)
-6. [SMTP diagnostic](#smtp-diagnostic)
-7. [VAPID diagnostic](#vapid-diagnostic)
-8. [Push send diagnostic](#push-send-diagnostic)
-9. [Production HTTP smoke test](#production-http-smoke-test)
-10. [What still requires human observation](#what-still-requires-human-observation)
+2. [Admin-only Diagnostics UI page](#admin-only-diagnostics-ui-page)
+3. [Production config validator](#production-config-validator)
+4. [Live health endpoint](#live-health-endpoint)
+5. [Database production-health CLI](#database-production-health-cli)
+6. [Cron heartbeat health CLI](#cron-heartbeat-health-cli)
+7. [SMTP diagnostic](#smtp-diagnostic)
+8. [VAPID diagnostic](#vapid-diagnostic)
+9. [Push send diagnostic](#push-send-diagnostic)
+10. [Production HTTP smoke test](#production-http-smoke-test)
+11. [What still requires human observation](#what-still-requires-human-observation)
 
 ---
 
@@ -32,6 +40,32 @@ runs them in this order:
 
 A single failing test blocks the deploy. There is no
 `continue-on-error: true` and no `|| true` anywhere in the workflow.
+
+## Admin-only Diagnostics UI page
+
+Sign in as an `admin`-role user, open **Diagnostics** in the sidebar
+(or go directly to `/admin-diagnostics.php`). The page renders the full
+grouped output of `diagnostics-lib.php` — runtime, production
+configuration, database + schema, VAPID pair, cron heartbeat, SMTP
+configuration — plus the static list of external checks the operator
+still has to do by hand.
+
+- The page is gated by `requireRole('admin')` at the top; any other role
+  gets the standard 403.
+- The page is READ-ONLY. It performs no writes, sends no email, and
+  never triggers a real push.
+- No secret is rendered. The `detail` column shows setting NAMES,
+  `<set>` / `(unset)` markers, table/index/foreign-key names, PHP
+  version + extension names, and coarse status words only.
+- Overall verdict at the top-right: **PASS** when every automatic
+  check passes; **FAIL** otherwise. The "Manual verification still
+  required" section never contributes to the verdict.
+
+Optional query parameters:
+
+- `?user=<email>` — additionally verify a specific account exists and
+  is `active`.
+- `?cron_threshold=<seconds>` — override the acceptable heartbeat age.
 
 ## Production config validator
 

@@ -17,9 +17,10 @@ DirectoryIndex index.php index.html
 </FilesMatch>
 
 # --- Deny access to include-only libraries -------------------------------
-# csv-lib.php and production-guard.php are pure library files required by
-# their callers (export-csv.php, functions.php). Never fetched directly.
-<FilesMatch "^(csv-lib\.php|production-guard\.php)$">
+# csv-lib.php, production-guard.php, and diagnostics-lib.php are pure
+# library files required by their callers (export-csv.php, functions.php,
+# admin-diagnostics.php respectively). They are never fetched directly.
+<FilesMatch "^(csv-lib\.php|production-guard\.php|diagnostics-lib\.php)$">
     Require all denied
 </FilesMatch>
 
