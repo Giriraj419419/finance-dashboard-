@@ -15,6 +15,7 @@
 require_once __DIR__ . '/includes/auth-check.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/audit.php';
+require_once __DIR__ . '/csv-lib.php';
 
 $me   = currentUser();
 $uid  = (int) $me['id'];
@@ -29,43 +30,8 @@ if (!in_array($report, $allowed_reports, true)) {
     exit;
 }
 
-/** Formula-injection safe cell. */
-function csv_cell($v): string
-{
-    if ($v === null) return '';
-    $s = (string) $v;
-    // Neutralise spreadsheet formulas — Excel / LibreOffice / Google Sheets
-    // treat a leading =, +, -, @, tab, CR, LF, or pipe as the start of a
-    // formula. Prefixing with a single quote forces text.
-    if ($s !== '' && strpbrk($s[0], "=+-@\t\r\n|") !== false) {
-        $s = "'" . $s;
-    }
-    return $s;
-}
-
-/** Emit UTF-8 BOM so Excel opens the file as UTF-8. */
-function csv_start(string $filename): void
-{
-    // Sanitise filename: only [A-Za-z0-9._-]
-    $safe = preg_replace('/[^A-Za-z0-9._-]/', '_', $filename);
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $safe . '"');
-    header('Cache-Control: no-store, no-cache, must-revalidate');
-    header('Pragma: no-cache');
-    echo "\xEF\xBB\xBF"; // UTF-8 BOM
-}
-
-function write_rows(array $header, iterable $rows): void
-{
-    $fp = fopen('php://output', 'w');
-    fputcsv($fp, $header);
-    foreach ($rows as $row) {
-        $safe = [];
-        foreach ($row as $k => $v) { $safe[] = csv_cell($v); }
-        fputcsv($fp, $safe);
-    }
-    fclose($fp);
-}
+// csv_cell / csv_start / write_rows now live in csv-lib.php so the unit
+// tests can exercise them without needing an authenticated session.
 
 $date = date('Ymd-His');
 

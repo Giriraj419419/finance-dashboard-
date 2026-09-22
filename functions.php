@@ -19,6 +19,12 @@ function app_config(?string $section = null)
         if (!is_array($config)) {
             $config = [];
         }
+        // Fail-loud if we are in `production` but the config would be unsafe
+        // (debug=true, session.secure=false, missing DB/SMTP/VAPID, placeholder
+        // creds, private key inside the web-root, etc.). No-op for dev/test.
+        // See production-guard.php for the exact rule set.
+        require_once __DIR__ . '/production-guard.php';
+        assert_production_config($config);
     }
     if ($section === null) {
         return $config;

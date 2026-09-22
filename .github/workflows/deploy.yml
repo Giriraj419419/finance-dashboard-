@@ -1,30 +1,37 @@
-# Finance Dashboard — cPanel FTPS deployment
+# Finance Dashboard — CI + cPanel FTPS deployment.
 #
-# Triggers on pushes to `main` (or the default branch — rename to match your repo).
-# Manual runs are available via workflow_dispatch.
+# Two-stage pipeline:
+#
+#   1. `tests` — runs PHP lint, the static security scan, the unit test
+#      suite (pure PHP), and the integration test suite (backed by a real
+#      MySQL 8 service). Fails the whole workflow if any check fails.
+#      Nothing about deploy runs until this job is green.
+#
+#   2. `deploy` — needs: tests. Only fires on push to master/main (or a
+#      manual dispatch). Uploads via FTPS using the repo's cPanel secrets.
+#      Sensitive files (config.php, VAPID keys, migrations, uploads, docs)
+#      are excluded from the upload — the server's own config.php is never
+#      overwritten.
 #
 # Required GitHub Secrets (Settings → Secrets and variables → Actions):
 #   FTP_SERVER    — cPanel FTP host, e.g. ftp.kktechsolutions.in
-#   FTP_USERNAME  — the FTP user (cPanel → FTP Accounts). Prefer a per-repo
-#                   FTP user with home dir = the site's document root.
-#   FTP_PASSWORD  — the FTP account password. Never hard-code.
+#   FTP_USERNAME  — the FTP user (cPanel → FTP Accounts).
+#   FTP_PASSWORD  — the FTP account password. Never hard-coded.
 #   FTP_PORT      — optional, defaults to 21 (FTPS/explicit).
-#   FTP_REMOTE_DIR — optional, defaults to "./"; set to the site's docroot
-#                    (e.g. "/public_html/finance/" for a sub-folder deploy).
+#   FTP_REMOTE_DIR — optional, defaults to "./"; set to the site's docroot.
 #
 # The workflow uses FTPS (explicit TLS) with `security: loose`. Loose still
 # encrypts the connection; it only relaxes the hostname check on the FTP
 # server's cert, which is required on shared cPanel hosts where the cert is
 # for the underlying provider (e.g. *.interactivedns.com) rather than the
-# customer's domain. See the `security:` note in the deploy step.
-#
-# `config.php`, `uploads/`, `videos/`, and dev-only files are excluded — the
-# production `config.php` on the server is never overwritten.
+# customer's domain.
 
-name: Deploy to cPanel (FTPS)
+name: CI + Deploy
 
 on:
   push:
+    branches: [ main, master ]
+  pull_request:
     branches: [ main, master ]
   workflow_dispatch:
 
@@ -33,31 +40,89 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # ---------------------------------------------------------------------
+  # 1. Tests — must pass before anything is deployed.
+  # ---------------------------------------------------------------------
+  tests:
+    name: Lint + unit + integration
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: finance_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate PHP syntax
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, openssl, curl, json
+          coverage: none
+
+      - name: Wait for MySQL to be reachable
         run: |
-          php_bin="$(command -v php || true)"
-          if [ -z "$php_bin" ]; then
-            sudo apt-get update -qq && sudo apt-get install -y -qq php-cli
-          fi
+          for i in {1..40}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot -proot --silent; then
+              echo "MySQL is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::MySQL never came up"
+          exit 1
+
+      - name: PHP lint every .php file
+        run: |
           fail=0
+          total=0
           while IFS= read -r -d '' f; do
-            out=$(php -l "$f" 2>&1) || true
+            total=$((total+1))
+            out=$(php -l "$f" 2>&1)
             if ! echo "$out" | grep -q "No syntax errors"; then
               echo "FAIL: $f"
               echo "$out"
-              fail=1
+              fail=$((fail+1))
             fi
           done < <(find . -name "*.php" -type f -not -path './.git/*' -not -path './videos/*' -print0)
+          echo "PHP lint: $((total-fail))/$total PASS"
           if [ "$fail" -ne 0 ]; then
-            echo "PHP syntax errors — aborting deploy."
+            echo "::error::PHP syntax errors — aborting."
             exit 1
           fi
+
+      - name: Static security scan (SQL / XSS / open-redirect / dynamic include)
+        run: php scripts/security-scan.php
+
+      - name: Run PHP tests (unit + integration)
+        env:
+          TEST_DB_DSN: "mysql:host=127.0.0.1;port=3306;dbname=finance_test;charset=utf8mb4"
+          TEST_DB_USER: root
+          TEST_DB_PASSWORD: root
+        run: php tests/run.php
+
+  # ---------------------------------------------------------------------
+  # 2. Deploy — only runs on push to master/main after tests are green.
+  # ---------------------------------------------------------------------
+  deploy:
+    name: Deploy to cPanel (FTPS)
+    needs: tests
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Validate deployment configuration
         env:
@@ -85,10 +150,11 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT || 21 }}
           protocol: ftps
-          # `loose` still encrypts the connection with TLS; it only relaxes the
-          # hostname check on the server's cert. This is standard on shared
-          # cPanel hosting where the FTP cert is for the underlying provider
-          # (e.g. *.interactivedns.com) rather than the customer's domain.
+          # `loose` still encrypts the connection with TLS; it only relaxes
+          # the hostname check on the server's cert. This is standard on
+          # shared cPanel hosting where the FTP cert is for the underlying
+          # provider (e.g. *.interactivedns.com) rather than the customer's
+          # domain.
           security: loose
           server-dir: ${{ secrets.FTP_REMOTE_DIR || './' }}
           local-dir: ./
@@ -101,6 +167,7 @@ jobs:
             **/node_modules/**
             **/videos/**
             **/docs/**
+            **/tests/**
             **/database/README.md
             **/database/schema.sql
             **/database/seed.sql

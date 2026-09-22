@@ -16,6 +16,13 @@ DirectoryIndex index.php index.html
     Require all denied
 </FilesMatch>
 
+# --- Deny access to include-only libraries -------------------------------
+# csv-lib.php and production-guard.php are pure library files required by
+# their callers (export-csv.php, functions.php). Never fetched directly.
+<FilesMatch "^(csv-lib\.php|production-guard\.php)$">
+    Require all denied
+</FilesMatch>
+
 # --- Deny access to dotfiles ---------------------------------------------
 <FilesMatch "^\.">
     Require all denied
@@ -24,6 +31,8 @@ DirectoryIndex index.php index.html
 # --- Deny access to private folders --------------------------------------
 RedirectMatch 403 ^.*/database/.*$
 RedirectMatch 403 ^.*/includes/.*$
+RedirectMatch 403 ^.*/scripts/.*$
+RedirectMatch 403 ^.*/tests/.*$
 
 # --- HTTPS redirect ------------------------------------------------------
 # TLS is confirmed on the production domain (finance.kktechsolutions.in),
