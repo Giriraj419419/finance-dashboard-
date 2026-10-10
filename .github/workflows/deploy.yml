@@ -4,21 +4,41 @@
 #
 #   1. `tests` — runs PHP lint, the static security scan, the unit test
 #      suite (pure PHP), and the integration test suite (backed by a real
-#      MySQL 8 service). Fails the whole workflow if any check fails.
+#      MySQL 8 service). Runs on every branch push and on pull requests
+#      targeting main/master. Fails the whole workflow if any check fails.
 #      Nothing about deploy runs until this job is green.
 #
-#   2. `deploy` — needs: tests. Only fires on push to master/main (or a
-#      manual dispatch). Uploads via FTPS using the repo's cPanel secrets.
-#      Sensitive files (config.php, VAPID keys, migrations, uploads, docs)
-#      are excluded from the upload — the server's own config.php is never
-#      overwritten.
+#   2. `deploy` — needs: tests. Fires ONLY when the ref is master AND the
+#      event is either a push to master or a workflow_dispatch on master.
+#      It also enters the protected `production` GitHub Environment, so a
+#      required reviewer must approve the deployment in the GitHub UI
+#      before any file is uploaded. Dev-branch pushes and dev-branch
+#      manual dispatches never reach the deploy job.
 #
-# Required GitHub Secrets (Settings → Secrets and variables → Actions):
-#   FTP_SERVER    — cPanel FTP host, e.g. ftp.kktechsolutions.in
-#   FTP_USERNAME  — the FTP user (cPanel → FTP Accounts).
-#   FTP_PASSWORD  — the FTP account password. Never hard-coded.
-#   FTP_PORT      — optional, defaults to 21 (FTPS/explicit).
-#   FTP_REMOTE_DIR — optional, defaults to "./"; set to the site's docroot.
+#      Uploads via FTPS using cPanel secrets scoped to the `production`
+#      environment. Sensitive files (config.php, VAPID keys, migrations,
+#      uploads, docs) are excluded from the upload — the server's own
+#      config.php is never overwritten.
+#
+# Required GitHub configuration BEFORE this workflow can deploy:
+#
+#   A. Settings → Environments → New environment "production"
+#        - Required reviewers: at least one (your GitHub user).
+#        - Deployment branches: "Selected branches" → add rule allowing
+#          only `master`.
+#
+#   B. Settings → Environments → production → Environment secrets:
+#        FTP_SERVER     — cPanel FTP host, e.g. ftp.kktechsolutions.in
+#        FTP_USERNAME   — the FTP user (cPanel → FTP Accounts).
+#        FTP_PASSWORD   — the FTP account password. Never hard-coded.
+#        FTP_PORT       — optional, defaults to 21 (FTPS/explicit).
+#        FTP_REMOTE_DIR — optional, defaults to "./"; set to the docroot.
+#
+#      These are *environment-scoped* secrets. The deploy job cannot read
+#      them until it enters the production environment, which happens only
+#      after a reviewer approves. Repository-scoped secrets are not used.
+#
+#   C. Settings → Actions → General: Actions must be enabled.
 #
 # The workflow uses FTPS (explicit TLS) with `security: loose`. Loose still
 # encrypts the connection; it only relaxes the hostname check on the FTP
@@ -30,7 +50,10 @@ name: CI + Deploy
 
 on:
   push:
-    branches: [ main, master ]
+    # CI runs on every branch so feature work gets lint/test coverage.
+    # Deployment is still locked to master by the `deploy` job's `if:`
+    # condition and by the protected `production` environment.
+    branches: ['**']
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -113,12 +136,26 @@ jobs:
         run: php tests/run.php
 
   # ---------------------------------------------------------------------
-  # 2. Deploy — only runs on push to master/main after tests are green.
+  # 2. Deploy — only runs on master, only on push or manual dispatch,
+  # only after tests pass, and only after a required reviewer approves
+  # the entry into the protected `production` environment.
   # ---------------------------------------------------------------------
   deploy:
     name: Deploy to cPanel (FTPS)
     needs: tests
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Branch guard: must be master. Event guard: push or manual dispatch.
+    # Pull-request events are already excluded because github.ref for a PR
+    # is refs/pull/<n>/merge, not refs/heads/master.
+    if: >-
+      github.ref == 'refs/heads/master' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # Entering this environment is what triggers the manual-approval gate
+    # and makes the environment-scoped FTP_* secrets available. The
+    # environment's own branch restriction (configured in the GitHub UI)
+    # is the second line of defence against a deploy from the wrong ref.
+    environment:
+      name: production
+      url: https://finance.kktechsolutions.in
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
